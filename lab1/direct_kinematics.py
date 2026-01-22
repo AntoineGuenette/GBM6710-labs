@@ -22,7 +22,7 @@ def direct_kinematics(joint_angles):
         
     # Length of each link in mm
     L1 = 90
-    L2 = 45.5
+    L2 = 45
     L3 = 135
     L4x = 38
     L4y = 60 #TODO check if correct
@@ -92,7 +92,7 @@ def T(R: np.array, P: np.array):
     T[0:3,3] = P
     return T
 
-joint_angles = [-55.008, -0.939, 27.644, -72.537, -59.184, 58.447]  # Example joint angles in degrees
+joint_angles = [10, 0, 15, 0, -20, -50]  # Example joint angles in degrees
 
 # Calculate the end-effector position
 position = direct_kinematics(joint_angles)
