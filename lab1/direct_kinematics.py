@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 
 def direct_kinematics(joint_angles):
     """
-    Calculate the end-effector position of the meca500 robotic arm given joint angles.
+    Calculate the end-effector position and euler angles of the meca500 robotic arm given joint angles.
 
     Parameters:
         joint_angles (list or np.array): Joint angles in degrees (theta 1 to theta 6).
 
     Returns:
         position (np.array): The 3D position of the end-effector.
+        euler_angles (np.array): The Euler angles of the end-effector.
     """
 
     # Verify that the angles are in the correct range of values
@@ -59,7 +60,11 @@ def direct_kinematics(joint_angles):
     # End-effector position in base frame
     position = T_6_0[0:3, 3]
 
-    return position
+    # End-effector Euler angles in base frame (not used in this function)
+    R_6_0 = T_6_0[0:3, 0:3]
+    euler_angles = rot.from_matrix(R_6_0).as_euler('xyz', degrees=True)
+
+    return position, euler_angles
 
 def euler_angles_to_rot_mat(theta_x, theta_y, theta_z):
     """
@@ -94,6 +99,7 @@ def T(R: np.array, P: np.array):
 
 joint_angles = [10, 0, 15, 0, -20, -50]  # Example joint angles in degrees
 
-# Calculate the end-effector position
-position = direct_kinematics(joint_angles)
+# Calculate the end-effector position and euler angles
+position, euler_angles = direct_kinematics(joint_angles)
 print(f"End-effector position: {position[0]:.3f} mm, {position[1]:.3f} mm, {position[2]:.3f} mm")
+print(f"End-effector Euler angles: {euler_angles[0]:.3f} deg, {euler_angles[1]:.3f} deg, {euler_angles[2]:.3f} deg")
