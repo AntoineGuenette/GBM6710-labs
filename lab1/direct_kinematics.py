@@ -36,15 +36,14 @@ def direct_kinematics(joint_angles):
     P_4org_3 = np.array([L4x, L4y, 0]) # Joint 4 position in joint 3 frame
     P_5org_4 = np.array([0, 0, L5]) # Joint 5 position in joint 4 frame
     P_6org_5 = np.array([0, L6, 0]) # Joint 6 position in joint 5 frame
-    P_6org_6 = np.array([0, 0, 0]) # End-effector position in joint 6 frame
 
     # Rotation matrices for each joint
     R_1_0 = euler_angles_to_rot_mat(0, 0, joint_angles[0]) # Rotation from base frame to joint 1 frame
-    R_2_1 = euler_angles_to_rot_mat(90, 0, joint_angles[1]) # Rotation from joint 1 frame to joint 2 frame
+    R_2_1 = euler_angles_to_rot_mat(-90, 0, joint_angles[1]) # Rotation from joint 1 frame to joint 2 frame
     R_3_2 = euler_angles_to_rot_mat(0, 0, joint_angles[2] - 90) # Rotation from joint 2 frame to joint 3 frame
     R_4_3 = euler_angles_to_rot_mat(-90, 0, joint_angles[3]) # Rotation from joint 3 frame to joint 4 frame
     R_5_4 = euler_angles_to_rot_mat(90, 0, joint_angles[4]) # Rotation from joint 4 frame to joint 5 frame
-    R_6_5 = euler_angles_to_rot_mat(90, 180, joint_angles[5]) # Rotation from joint 5 frame to joint 6 frame
+    R_6_5 = euler_angles_to_rot_mat(-90, 180, joint_angles[5]) # Rotation from joint 5 frame to joint 6 frame
 
     # Homogeneous transformation matrices for each joint
     T_1_0 = T(R_1_0, P_1org_0)
