@@ -31,20 +31,46 @@ def direct_kinematics(joint_angles):
     L6 = 70
 
     # Position vectors of each joint in their respective frames
-    P_1org_0 = np.array([0, 0, L1]) # Joint 1 position in base frame
-    P_2org_1 = np.array([0, 0, L2]) # Joint 2 position in joint 1 frame
-    P_3org_2 = np.array([0, -L3, 0]) # Joint 3 position in joint 2 frame
-    P_4org_3 = np.array([L4x, L4y, 0]) # Joint 4 position in joint 3 frame
-    P_5org_4 = np.array([0, 0, L5]) # Joint 5 position in joint 4 frame
-    P_6org_5 = np.array([0, L6, 0]) # Joint 6 position in joint 5 frame
+
+    P_1org_0 = np.array([0, 0, L1])         # Joint 1 position in base frame
+    P_2org_1 = np.array([0, 0, L2])         # Joint 2 position in joint 1 frame
+    P_3org_2 = np.array([0, -L3, 0])        # Joint 3 position in joint 2 frame
+    P_4org_3 = np.array([L4x, L4y, 0])      # Joint 4 position in joint 3 frame
+    P_5org_4 = np.array([0, 0, L5])         # Joint 5 position in joint 4 frame
+    P_6org_5 = np.array([0, L6, 0])         # Joint 6 position in joint 5 frame
 
     # Rotation matrices for each joint
-    R_1_0 = euler_angles_to_rot_mat(0, 0, joint_angles[0]) # Rotation from base frame to joint 1 frame
-    R_2_1 = euler_angles_to_rot_mat(-90, 0, joint_angles[1]) # Rotation from joint 1 frame to joint 2 frame
-    R_3_2 = euler_angles_to_rot_mat(0, 0, joint_angles[2] - 90) # Rotation from joint 2 frame to joint 3 frame
-    R_4_3 = euler_angles_to_rot_mat(-90, 0, joint_angles[3]) # Rotation from joint 3 frame to joint 4 frame
-    R_5_4 = euler_angles_to_rot_mat(90, 0, joint_angles[4]) # Rotation from joint 4 frame to joint 5 frame
-    R_6_5 = euler_angles_to_rot_mat(-90, 180, joint_angles[5]) # Rotation from joint 5 frame to joint 6 frame
+    # Important: mechanical offsets (fixed) are separated from joint rotations (variable)
+
+    # Joint 1
+    R_1_0_offset = np.eye(3)                # No mechanical offset for joint 1
+    R_1_0_joint  = Rz(joint_angles[0])      # Rotation around local z-axis
+    R_1_0 = R_1_0_offset @ R_1_0_joint
+
+    # Joint 2
+    R_2_1_offset = Rx(-90)                  # Mechanical offset between joint 1 and joint 2 frames
+    R_2_1_joint  = Rz(joint_angles[1])      # Rotation around joint 2 local z-axis
+    R_2_1 = R_2_1_offset @ R_2_1_joint
+
+    # Joint 3
+    R_3_2_offset = Rz(-90)                  # Mechanical offset for joint 3
+    R_3_2_joint  = Rz(joint_angles[2])      # Rotation around joint 3 local z-axis
+    R_3_2 = R_3_2_offset @ R_3_2_joint
+
+    # Joint 4
+    R_4_3_offset = Rx(-90)                  # Mechanical offset for joint 4
+    R_4_3_joint  = Rz(joint_angles[3])      # Rotation around joint 4 local z-axis
+    R_4_3 = R_4_3_offset @ R_4_3_joint
+
+    # Joint 5
+    R_5_4_offset = Rx(90)                   # Mechanical offset for joint 5
+    R_5_4_joint  = Rz(joint_angles[4])      # Rotation around joint 5 local z-axis
+    R_5_4 = R_5_4_offset @ R_5_4_joint
+
+    # Joint 6
+    R_6_5_offset = Rx(-90) @ Ry(180)        # Mechanical offset for joint 6
+    R_6_5_joint  = Rz(joint_angles[5])      # Rotation around joint 6 local z-axis
+    R_6_5 = R_6_5_offset @ R_6_5_joint
 
     # Homogeneous transformation matrices for each joint
     T_1_0 = T(R_1_0, P_1org_0)
@@ -66,20 +92,41 @@ def direct_kinematics(joint_angles):
 
     return position, euler_angles
 
-def euler_angles_to_rot_mat(theta_x, theta_y, theta_z):
+def Rz(theta):
     """
-    Computes the rotation matrix from Euler angles.
+    Rotation matrix for a rotation around the local z-axis.
 
     Parameters:
-        theta_x (float): Rotation angle around x-axis in degrees.
-        theta_y (float): Rotation angle around y-axis in degrees.
-        theta_z (float): Rotation angle around z-axis in degrees.
+        theta (float): Rotation angle around z-axis in degrees.
 
     Returns:
         R (np.array): 3x3 rotation matrix.
     """
-    R = rot.from_euler(seq='xyz', angles=[theta_x, theta_y, theta_z], degrees=True)
-    return R.as_matrix()
+    return rot.from_euler('z', theta, degrees=True).as_matrix()
+
+def Ry(theta):
+    """
+    Rotation matrix for a rotation around the local y-axis.
+
+    Parameters:
+        theta (float): Rotation angle around y-axis in degrees.
+
+    Returns:
+        R (np.array): 3x3 rotation matrix.
+    """
+    return rot.from_euler('y', theta, degrees=True).as_matrix()
+
+def Rx(theta):
+    """
+    Rotation matrix for a rotation around the local x-axis.
+
+    Parameters:
+        theta (float): Rotation angle around x-axis in degrees.
+
+    Returns:
+        R (np.array): 3x3 rotation matrix.
+    """
+    return rot.from_euler('x', theta, degrees=True).as_matrix()
 
 def T(R: np.array, P: np.array):
     """
@@ -97,7 +144,9 @@ def T(R: np.array, P: np.array):
     T[0:3,3] = P
     return T
 
-joint_angles = [10, 0, 15, 0, -20, -50]  # Example joint angles in degrees
+# joint_angles = [0, 0, 0, 0, 0, 0]
+# joint_angles = [10, 0, 15, 0, -20, -50]
+joint_angles = [15, 16, -14, 7, 37, 50]
 
 # Calculate the end-effector position and euler angles
 position, euler_angles = direct_kinematics(joint_angles)
