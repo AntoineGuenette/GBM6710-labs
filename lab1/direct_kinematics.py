@@ -88,7 +88,8 @@ def direct_kinematics(joint_angles):
 
     # End-effector Euler angles in base frame (not used in this function)
     R_6_0 = T_6_0[0:3, 0:3]
-    euler_angles = rot.from_matrix(R_6_0).as_euler('xyz', degrees=True)
+    rx, ry, rz = myRotm2eul(R_6_0)
+    euler_angles = np.rad2deg([rx, ry, rz])
 
     return position, euler_angles
 
@@ -144,9 +145,45 @@ def T(R: np.array, P: np.array):
     T[0:3,3] = P
     return T
 
+def myRotm2eul(R):
+    """
+    Return the rotation along x, y and z direction from a rotation matrix
+    following the Mecademic xyz Euler convention.
+
+    Parameters:
+        R (np.array): 3x3 rotation matrix
+
+    Returns:
+        rx (float): rotation around x in radians
+        ry (float): rotation around y in radians
+        rz (float): rotation around z in radians
+    """
+
+    # Numerical tolerance for singularity detection
+    eps = 1e-9
+
+    if abs(R[0, 2] - 1) < eps or abs(R[0, 2] + 1) < eps:
+        # Gimbal lock case
+        rx = 0.0
+        ry = R[0, 2] * (np.pi / 2)
+        rz = np.arctan2(R[1, 0], R[1, 1])
+    else:
+        rx = np.arctan2(-R[1, 2], R[2, 2])
+        ry = np.arcsin(R[0, 2])
+        rz = np.arctan2(-R[0, 1], R[0, 0])
+
+    return rx, ry, rz
+
+
+
+# Tests with different joint angles
 # joint_angles = [0, 0, 0, 0, 0, 0]
 # joint_angles = [10, 0, 15, 0, -20, -50]
-joint_angles = [15, 16, -14, 7, 37, 50]
+# joint_angles = [15, 16, -14, 7, 37, 50]
+# joint_angles = [52, -13, -35, -38, 76, 91]
+# joint_angles = [-55, -1, 27, -72, -59, 58]
+# joint_angles = [-55.008, -0.939, 27.644, -72.537, -59.184, 58.447]
+joint_angles = [46.287, 6.624, -5.171, 39.165, -59.322, 73.873]
 
 # Calculate the end-effector position and euler angles
 position, euler_angles = direct_kinematics(joint_angles)
