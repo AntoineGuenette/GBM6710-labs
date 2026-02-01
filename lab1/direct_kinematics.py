@@ -26,8 +26,8 @@ def direct_kinematics(joint_angles):
     L2 = 45
     L3 = 135
     L4x = 38
-    L4y = 60 #TODO check if correct
-    L5 = 60 #TODO check if correct
+    L4y = 60
+    L5 = 60
     L6 = 70
 
     # Position vectors of each joint in their respective frames
