@@ -1,0 +1,1 @@
+"""Lab 1 - Meca500 Direct and Inverse Kinematics"""
