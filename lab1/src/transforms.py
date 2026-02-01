@@ -48,8 +48,8 @@ def myRotm2eul(R):
     alpha = np.degrees(alpha_rad) 
     beta = np.degrees(beta_rad)
 
-    # Warn when approaching representation singularity (|β| > 89°)
-    if abs(beta) > 89.0:
+    # Warn when approaching representation singularity (89˚ < |β| < 90°)
+    if 89.0 < abs(beta) < 90.0:
         print(f"WARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α may be ill-conditioned.")
         
     gamma = np.degrees(gamma_rad)
