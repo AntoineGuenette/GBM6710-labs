@@ -45,18 +45,20 @@ def direct_kinematics(joint_angles):
 
 
 if __name__ == "__main__":
-    
+
     print("\n --- Meca500 Direct Kinematics --- \n")
 
-    joint_1_angle = float(input("Enter joint 1 angle (degrees): "))
-    joint_2_angle = float(input("Enter joint 2 angle (degrees): "))
-    joint_3_angle = float(input("Enter joint 3 angle (degrees): "))
-    joint_4_angle = float(input("Enter joint 4 angle (degrees): "))
-    joint_5_angle = float(input("Enter joint 5 angle (degrees): "))
-    joint_6_angle = float(input("Enter joint 6 angle (degrees): "))
+    # joint_1_angle = float(input("Enter joint 1 angle (degrees): "))
+    # joint_2_angle = float(input("Enter joint 2 angle (degrees): "))
+    # joint_3_angle = float(input("Enter joint 3 angle (degrees): "))
+    # joint_4_angle = float(input("Enter joint 4 angle (degrees): "))
+    # joint_5_angle = float(input("Enter joint 5 angle (degrees): "))
+    # joint_6_angle = float(input("Enter joint 6 angle (degrees): "))
 
-    joint_angles = [joint_1_angle, joint_2_angle, joint_3_angle,
-                    joint_4_angle, joint_5_angle, joint_6_angle]
+    # joint_angles = [joint_1_angle, joint_2_angle, joint_3_angle,
+    #                 joint_4_angle, joint_5_angle, joint_6_angle]
+
+    joint_angles = [-55.008, -0.939, 27.644, -72.537, -59.184, 58.447]
     
     # Calculate the end-effector position and euler angles
     position, euler_angles = direct_kinematics(joint_angles)

@@ -34,12 +34,9 @@ def myRotm2eul(R):
         beta (float): rotation around y' in degrees
         gamma (float): rotation around z' in degrees
     """
-    # Numerical tolerance for singularity detection
-    eps = 1e-9
-
-    if abs(R[0, 2] - 1) < eps or abs(R[0, 2] + 1) < eps:
-        # Representation singularity
-        alpha_rad = 0.0
+    if R[0, 2] == 1 or R[0, 2] == -1:
+        # Representation singularity (|β| = 90°)
+        alpha_rad = 0
         beta_rad = R[0, 2] * (np.pi / 2)
         gamma_rad = np.arctan2(R[1, 0], R[1, 1])
     else:
@@ -50,6 +47,11 @@ def myRotm2eul(R):
     # Convert radians to degrees
     alpha = np.degrees(alpha_rad) 
     beta = np.degrees(beta_rad)
+
+    # Warn when approaching representation singularity (|β| > 89°)
+    if abs(beta) > 89.0:
+        print(f"WARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α may be ill-conditioned.")
+        
     gamma = np.degrees(gamma_rad)
 
     # Adjust angles to be in the desired range
