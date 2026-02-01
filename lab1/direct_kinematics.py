@@ -89,7 +89,7 @@ def direct_kinematics(joint_angles):
     # End-effector Euler angles in base frame (not used in this function)
     R_6_0 = T_6_0[0:3, 0:3]
     rx, ry, rz = myRotm2eul(R_6_0)
-    euler_angles = np.rad2deg([rx, ry, rz])
+    euler_angles = [rx, ry, rz]
 
     return position, euler_angles
 
@@ -147,45 +147,57 @@ def T(R: np.array, P: np.array):
 
 def myRotm2eul(R):
     """
-    Return the rotation along x, y and z direction from a rotation matrix
-    following the Mecademic xyz Euler convention.
+    Return the euler angles from a rotation matrix following the mobile xyz convention.
 
     Parameters:
         R (np.array): 3x3 rotation matrix
 
     Returns:
-        rx (float): rotation around x in radians
-        ry (float): rotation around y in radians
-        rz (float): rotation around z in radians
+        alpha (float): rotation around x' in degrees
+        beta (float): rotation around y' in degrees
+        gamma (float): rotation around z' in degrees
     """
 
     # Numerical tolerance for singularity detection
     eps = 1e-9
 
     if abs(R[0, 2] - 1) < eps or abs(R[0, 2] + 1) < eps:
-        # Gimbal lock case
-        rx = 0.0
-        ry = R[0, 2] * (np.pi / 2)
-        rz = np.arctan2(R[1, 0], R[1, 1])
+        # Representation singularity
+        alpha_rad = 0.0
+        beta_rad = R[0, 2] * (np.pi / 2)
+        gamma_rad = np.arctan2(R[1, 0], R[1, 1])
     else:
-        rx = np.arctan2(-R[1, 2], R[2, 2])
-        ry = np.arcsin(R[0, 2])
-        rz = np.arctan2(-R[0, 1], R[0, 0])
+        alpha_rad = np.arctan2(-R[1, 2], R[2, 2])
+        beta_rad = np.arcsin(R[0, 2])
+        gamma_rad = np.arctan2(-R[0, 1], R[0, 0])
 
-    return rx, ry, rz
+    # Convert radians to degrees
+    alpha = np.degrees(alpha_rad) 
+    beta = np.degrees(beta_rad)
+    gamma = np.degrees(gamma_rad)
 
+    # Adjust angles to be in the desired range
+    alpha = alpha + 180 if alpha < 0 else alpha - 180 if alpha > 0 else alpha
+    beta = -beta
 
+    # For gamma, no adjustment needed, even if the angles do not correspond to the expected values.
+    # From Mecademic documentation (https://mecademic.com/insights/academic-tutorials/space-orientation-euler-angles/):
+    # In the chosen Euler angle convention, angles α and β define this direction, while angle γ is
+    # ignored because it corresponds to a parasitic rotation that is uncontrollable.
+
+    return alpha, beta, gamma
 
 # Tests with different joint angles
-# joint_angles = [0, 0, 0, 0, 0, 0]
+joint_angles = [0, 0, 0, 0, 0, 0]
 # joint_angles = [10, 0, 15, 0, -20, -50]
 # joint_angles = [15, 16, -14, 7, 37, 50]
 # joint_angles = [52, -13, -35, -38, 76, 91]
 # joint_angles = [-55, -1, 27, -72, -59, 58]
 # joint_angles = [-55.008, -0.939, 27.644, -72.537, -59.184, 58.447]
-joint_angles = [46.287, 6.624, -5.171, 39.165, -59.322, 73.873]
+# joint_angles = [46.287, 6.624, -5.171, 39.165, -59.322, 73.873]
 
 # Calculate the end-effector position and euler angles
 position, euler_angles = direct_kinematics(joint_angles)
-print(f"End-effector position: {position[0]:.3f} mm, {position[1]:.3f} mm, {position[2]:.3f} mm")
-print(f"End-effector Euler angles: {euler_angles[0]:.3f} deg, {euler_angles[1]:.3f} deg, {euler_angles[2]:.3f} deg")
+print("\nEnd-Effector Position and Euler Angles:")
+print(f"(x={position[0]:.3f}mm, y={position[1]:.3f}mm, z={position[2]:.3f}mm)")
+print(f"(α={euler_angles[0]:.3f}˚, β={euler_angles[1]:.3f}˚, γ={euler_angles[2]:.3f}˚)\n")
