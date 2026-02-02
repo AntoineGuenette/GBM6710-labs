@@ -121,7 +121,7 @@ def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, s
         plt.savefig(file_path, dpi=300)
         print(f"Figure saved to {file_path}")
     
-def plot_xy_slices_contours(slices: dict, alpha: float=0.01, savepath: str=None):
+def plot_xy_contours(slices: dict, alpha: float=0.01, savepath: str=None):
     """
     Plot filled alpha-shape contours for multiple XY slices.
 
@@ -212,4 +212,4 @@ if __name__ == "__main__":
     print("\nSampling XY slices...")
     xy_slices = sample_xy_slices(z_slices, num_samples_per_joint=30)
     print("Plotting XY slices...")
-    plot_xy_slices_contours(xy_slices, alpha=0.01, savepath=figs_path)
+    plot_xy_contours(xy_slices, alpha=0.01, savepath=figs_path)
