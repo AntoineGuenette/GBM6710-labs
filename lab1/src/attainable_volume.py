@@ -169,7 +169,7 @@ def plot_xy_contours(slices: dict, alpha: float=0.01, savepath: str=None):
 
     # Save figure if savepath is provided
     if savepath is not None:
-        file_name = "meca500_attainable_xy_slices.png"
+        file_name = "meca500_attainable_xy.png"
         file_path = os.path.join(savepath, file_name)
         plt.savefig(file_path, dpi=300)
         print(f"Figure saved to {file_path}")
