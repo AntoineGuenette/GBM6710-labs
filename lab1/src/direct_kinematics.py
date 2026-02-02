@@ -3,12 +3,13 @@ import numpy as np
 from meca500_params import *
 from transforms import Rx, Ry, Rz, T, myRotm2eul
 
-def direct_kinematics(joint_angles):
+def direct_kinematics(joint_angles: list) -> tuple:
     """
-    Calculate the end-effector position and euler angles of the meca500 robotic arm given joint angles.
+    Calculate the end-effector position and euler angles of the meca500 robotic arm given joint
+    angles.
 
     Parameters:
-        joint_angles (list or np.array): Joint angles in degrees (theta 1 to theta 6).
+        joint_angles (list): Joint angles in degrees (theta 1 to theta 6).
 
     Returns:
         position (np.array): The 3D position of the end-effector.

@@ -48,7 +48,7 @@ from lab1.src.direct_kinematics import direct_kinematics
         ),
     ],
 )
-def test_direct_kinematics_runs(joint_angles, position_expected, euler_expected):
+def test_direct_kinematics_runs(joint_angles: list, position_expected: list, euler_expected: list):
     position, euler_angles = direct_kinematics(joint_angles)
 
     # Check shapes

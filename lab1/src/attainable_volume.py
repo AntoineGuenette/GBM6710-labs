@@ -6,7 +6,7 @@ import os
 from meca500_params import *
 from direct_kinematics import direct_kinematics
 
-def sample_xz_slice(num_samples_per_joint=10) -> np.array:
+def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     """
     Sample the attainable volume of the meca500 robotic arm by evaluating the direct kinematics at
     various joint angle combinations in the XZ plane.
@@ -38,7 +38,7 @@ def sample_xz_slice(num_samples_per_joint=10) -> np.array:
 
     return positions
 
-def sample_xy_slices(z_slices, num_samples_per_joint=10) -> dict:
+def sample_xy_slices(z_slices: np.array, num_samples_per_joint: int=10) -> dict:
     """
     Sample the attainable volume of the meca500 robotic arm by evaluating the direct kinematics at
     various joint angle combinations in multiple XY planes.
@@ -74,7 +74,7 @@ def sample_xy_slices(z_slices, num_samples_per_joint=10) -> dict:
 
     return slices
 
-def plot_xz_contour(z_slices, positions, alpha=0.1, savepath=None):
+def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, savepath: str=None):
     """
     Plot the contour of the reachable region in the XZ plane.
 
@@ -121,7 +121,7 @@ def plot_xz_contour(z_slices, positions, alpha=0.1, savepath=None):
         plt.savefig(file_path, dpi=300)
         print(f"Figure saved to {file_path}")
     
-def plot_xy_slices_contours(slices, alpha=0.01, savepath=None):
+def plot_xy_slices_contours(slices: dict, alpha: float=0.01, savepath: str=None):
     """
     Plot filled alpha-shape contours for multiple XY slices.
 
@@ -174,7 +174,7 @@ def plot_xy_slices_contours(slices, alpha=0.01, savepath=None):
         plt.savefig(file_path, dpi=300)
         print(f"Figure saved to {file_path}")
 
-def get_z_slice_colors(z_slices, cmap_name="plasma") -> dict:
+def get_z_slice_colors(z_slices: np.array, cmap_name: str="plasma") -> dict:
     """
     Generate a consistent color mapping for Z slices.
 

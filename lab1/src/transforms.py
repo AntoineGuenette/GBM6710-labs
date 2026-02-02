@@ -1,19 +1,19 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as rot
 
-def Rx(theta):
+def Rx(theta: float) -> np.array:
     """Rotation around x-axis (degrees)."""
     return rot.from_euler('x', theta, degrees=True).as_matrix()
 
-def Ry(theta):
+def Ry(theta: float) -> np.array:
     """Rotation around y-axis (degrees)."""
     return rot.from_euler('y', theta, degrees=True).as_matrix()
 
-def Rz(theta):
+def Rz(theta: float) -> np.array:
     """Rotation around z-axis (degrees)."""
     return rot.from_euler('z', theta, degrees=True).as_matrix()
 
-def T(R: np.array, P: np.array):
+def T(R: np.array, P: np.array) -> np.array:
     """
     Homogeneous transformation matrix from rotation R and position P.
     """
@@ -22,7 +22,7 @@ def T(R: np.array, P: np.array):
     T[0:3, 3] = P
     return T
 
-def myRotm2eul(R):
+def myRotm2eul(R: np.array) -> tuple:
     """
     Return the euler angles from a rotation matrix following the mobile xyz convention.
 
