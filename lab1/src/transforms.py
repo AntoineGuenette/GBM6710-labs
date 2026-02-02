@@ -22,12 +22,13 @@ def T(R: np.array, P: np.array) -> np.array:
     T[0:3, 3] = P
     return T
 
-def myRotm2eul(R: np.array) -> tuple:
+def myRotm2eul(R: np.array, raise_warning: bool=True) -> tuple:
     """
     Return the euler angles from a rotation matrix following the mobile xyz convention.
 
     Parameters:
         R (np.array): 3x3 rotation matrix
+        raise_warning (bool): Whether to raise a warning when close to a representation singularity.
 
     Returns:
         alpha (float): rotation around x' in degrees
@@ -49,7 +50,7 @@ def myRotm2eul(R: np.array) -> tuple:
     beta = np.degrees(beta_rad)
 
     # Warn when approaching representation singularity (89˚ < |β| < 90°)
-    if 89.0 < abs(beta) < 90.0:
+    if 89.0 < abs(beta) < 90.0 and raise_warning:
         print(f"WARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α may be ill-conditioned.")
         
     gamma = np.degrees(gamma_rad)
