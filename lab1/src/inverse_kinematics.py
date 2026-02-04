@@ -1,27 +1,13 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from meca500_params import *
 from direct_kinematics import direct_kinematics_T
-
-# Gérer limites articulaires parce que la cinématique inverse peut proposer des angles hors limites
-def gerer_limites(q):
-    """Force chaque angle q à rester dans les limites JOINT_LIMITS"""
-    q = q.copy()
-    for i, (low, high) in enumerate(JOINT_LIMITS):
-        q[i] = np.clip(q[i], low, high)
-    return q
-
-# delta O de l'erreur
-def erreur_orientation(R_target, R_current):
-    """Erreur orientation sous forme de vecteur rotation"""
-    R_err = R_target @ R_current.T
-    return R.from_matrix(R_err).as_rotvec()
+from meca500_params import *
+from utils import enforce_joint_limits, orientation_error
 
 # Selon mes recherches + conseil IA, la meilleure technique pour faire la cinématique inverse
 # est Damped Least Squares qui permet d'éviter que ça explose quand Jacobien est proche d'une singularité
 # Ça permet "d'inversé" la jacobienne avec un facteur d'amortissement. 
-
 
 # Jacobien numérique 
 # Jacobien J : e(q+dq) = e(q) + Jdq avec e vecteur d'erreur de position et d'orientation
@@ -40,7 +26,7 @@ def jacobien_num(q, p_target, R_target, eps_deg=1e-2):
 
     e0 = np.hstack([
         p_target - p0,
-        erreur_orientation(R_target, R0)
+        orientation_error(R_target, R0)
     ])
 
     J = np.zeros((6, 6))
@@ -56,7 +42,7 @@ def jacobien_num(q, p_target, R_target, eps_deg=1e-2):
 
         e1 = np.hstack([
             p_target - p1,
-            erreur_orientation(R_target, R1)
+            orientation_error(R_target, R1)
         ])
 
         J[:, i] = (e1 - e0) / step
@@ -80,7 +66,7 @@ def cin_inv_solution(x, y, z,alpha, beta, gamma, q0, max_iters=60, tol_pos=1, to
             print(f"  it={it:3d} | pos_err={pos_err:8.3f} | rot_err={rot_err:8.4e}")
 
         if pos_err < tol_pos and rot_err < tol_rot:
-            return gerer_limites(q), True
+            return enforce_joint_limits(q), True
 
         # DLS
         A = J @ J.T + (lam ** 2) * np.eye(6)
@@ -88,7 +74,7 @@ def cin_inv_solution(x, y, z,alpha, beta, gamma, q0, max_iters=60, tol_pos=1, to
 
         # Remettre les angles de rad --> deg
         q += gain * np.rad2deg(dq)
-        q = gerer_limites(q)
+        q = enforce_joint_limits(q)
 
     return q, False
 
