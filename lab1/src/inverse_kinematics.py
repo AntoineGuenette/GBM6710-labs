@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+
 from meca500_params import *
 from direct_kinematics import direct_kinematics_T
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 from meca500_params import *
-from direct_kinematics import direct_kinematics
+from direct_kinematics import direct_kinematics_position
 
 def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     """
@@ -30,7 +30,7 @@ def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
         for theta3 in joint_ranges[2]:
                 for theta5 in joint_ranges[4]:
                     joint_angles = [theta1_fixed, theta2, theta3, theta4_fixed, theta5, theta6_fixed]
-                    pos, _ = direct_kinematics(joint_angles, raise_warning=False)
+                    pos, _ = direct_kinematics_position(joint_angles, verbose=False)
                     positions.append(pos)
     
     # Convert to numpy array
@@ -64,7 +64,7 @@ def sample_xy_slices(z_slices: np.array, num_samples_per_joint: int=10) -> dict:
             for theta3 in joint_ranges[2]:
                 for theta5 in theta5_vals:
                     joint_angles = [theta1, theta2, theta3, theta4_fixed, theta5, theta6_fixed]
-                    pos, _ = direct_kinematics(joint_angles, raise_warning=False)
+                    pos, _ = direct_kinematics_position(joint_angles, verbose=False)
                     z_idx = np.argmin(np.abs(z_slices - pos[2]))
                     slices[z_slices[z_idx]].append(pos)
 
