@@ -1,19 +1,20 @@
 import numpy as np
-from scipy.spatial.transform import Rotation as rot
+from scipy.spatial.transform import Rotation as R
 
 from meca500_params import *
+from utils import enforce_joint_limits, orientation_error
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""
-    return rot.from_euler('x', theta, degrees=True).as_matrix()
+    return R.from_euler('x', theta, degrees=True).as_matrix()
 
 def rotmat_y_deg(theta: float) -> np.array:
     """Rotation matrix around y-axis (degrees)."""
-    return rot.from_euler('y', theta, degrees=True).as_matrix()
+    return R.from_euler('y', theta, degrees=True).as_matrix()
 
 def rotmat_z_deg(theta: float) -> np.array:
     """Rotation matrix around z-axis (degrees)."""
-    return rot.from_euler('z', theta, degrees=True).as_matrix()
+    return R.from_euler('z', theta, degrees=True).as_matrix()
 
 def transform_mat(R: np.array, P: np.array) -> np.array:
     """
@@ -67,3 +68,59 @@ def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
     # ignored because it corresponds to a parasitic rotation that is uncontrollable.
 
     return alpha, beta, gamma
+
+def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
+    """
+    Compute the numerical Jacobian J (6x6) and the error vector e (6,) for a given target pose.
+
+    The error vector is defined as:
+        e = [p_target - p_current, rotvec(R_target * R_current^T)]
+
+    - position error in millimeters
+    - orientation error in radians
+
+    Parameters:
+        joint_angles (np.array): Joint angles in degrees (6,)
+        p_target (np.array): Target position (3,)
+        R_target (np.array): Target rotation matrix (3x3)
+        eps_deg (float): Finite difference step in degrees
+
+    Returns:
+        J (np.array): Numerical Jacobian matrix (6x6)
+        e (np.array): Error vector at the current configuration (6,)
+    """
+    from direct_kinematics import direct_kinematics_T
+
+    # Forward kinematics at the current configuration
+    T0 = direct_kinematics_T(joint_angles)
+    p_current = T0[:3, 3]
+    R_current = T0[:3, :3]
+
+    # Error at the current configuration
+    e0 = np.hstack([
+        p_target - p_current,
+        orientation_error(R_target, R_current)
+    ])
+
+    # Numerical Jacobian initialization
+    J = np.zeros((6, 6))
+    step_rad = np.deg2rad(eps_deg)
+
+    # Finite difference approximation
+    for i in range(6):
+        q_perturbed = joint_angles.copy()
+        q_perturbed[i] += eps_deg
+
+        T1 = direct_kinematics_T(q_perturbed)
+        p_perturbed = T1[:3, 3]
+        R_perturbed = T1[:3, :3]
+
+        e1 = np.hstack([
+            p_target - p_perturbed,
+            orientation_error(R_target, R_perturbed)
+        ])
+
+        J[:, i] = (e1 - e0) / step_rad
+
+    return J, e0
+

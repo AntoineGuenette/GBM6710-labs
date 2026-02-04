@@ -3,51 +3,13 @@ from scipy.spatial.transform import Rotation as R
 
 from direct_kinematics import direct_kinematics_T
 from meca500_params import *
+from transforms import numerical_jacobian
 from utils import enforce_joint_limits, orientation_error
 
 # Selon mes recherches + conseil IA, la meilleure technique pour faire la cinématique inverse
 # est Damped Least Squares qui permet d'éviter que ça explose quand Jacobien est proche d'une singularité
 # Ça permet "d'inversé" la jacobienne avec un facteur d'amortissement. 
 
-# Jacobien numérique 
-# Jacobien J : e(q+dq) = e(q) + Jdq avec e vecteur d'erreur de position et d'orientation
-
-def jacobien_num(q, p_target, R_target, eps_deg=1e-2):
-    """
-    Calcule le Jacobien numérique J (6x6) et l'erreur e (6,) pour une pose cible.
-
-    e = [p_target - p_current,  rotvec(R_target * R_current^T)]
-    - position en mm
-    - orientation en radians
-    """
-    T0 = direct_kinematics_T(q)
-    p0 = T0[:3, 3]
-    R0 = T0[:3, :3]
-
-    e0 = np.hstack([
-        p_target - p0,
-        orientation_error(R_target, R0)
-    ])
-
-    J = np.zeros((6, 6))
-    step = np.deg2rad(eps_deg)
-
-    for i in range(6):
-        q1 = q.copy()
-        q1[i] += eps_deg
-
-        T1 = direct_kinematics_T(q1)
-        p1 = T1[:3, 3]
-        R1 = T1[:3, :3]
-
-        e1 = np.hstack([
-            p_target - p1,
-            orientation_error(R_target, R1)
-        ])
-
-        J[:, i] = (e1 - e0) / step
-
-    return J, e0
 
 
 def cin_inv_solution(x, y, z,alpha, beta, gamma, q0, max_iters=60, tol_pos=1, tol_rot=1, lam=1e-2, gain=0.6, verbose = False):
@@ -58,7 +20,7 @@ def cin_inv_solution(x, y, z,alpha, beta, gamma, q0, max_iters=60, tol_pos=1, to
     q = q0.astype(float)
 
     for it in range(max_iters):
-        J, e = jacobien_num(q, p_target, R_target)
+        J, e = numerical_jacobian(q, p_target, R_target)
         pos_err = np.linalg.norm(e[:3])
         rot_err = np.linalg.norm(e[3:])
 
@@ -136,11 +98,6 @@ def print_solutions(solutions):
         for j, angle in enumerate(q, 1):
             print(f"  q{j}: {angle:8.3f} deg")
         print()
-def euler_zyx_from_q(q_deg):
-    T0 = direct_kinematics_T(q_deg)
-    R0 = T0[:3, :3]
-    gamma, beta, alpha = R.from_matrix(R0).as_euler('ZYX', degrees=True)
-    return alpha, beta, gamma
 
 # Test
 x, y, z = 190, 0, 308
