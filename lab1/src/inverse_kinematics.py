@@ -1,34 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from transforms import Rx, Ry, Rz, T
 from meca500_params import *
-
-
-def dk_T(q_deg):
-    """
-    Fonction qui retourne la matrice de transformation T_6_0 (4X4)
-
-    q_deg : angles des 6 joints en degré
-    """
-    q1, q2, q3, q4, q5, q6 = q_deg
-
-    R_1_0 = Rz(q1)
-    R_2_1 = Rx(-90) @ Rz(q2)
-    R_3_2 = Rz(-90) @ Rz(q3)
-    R_4_3 = Rx(-90) @ Rz(q4)
-    R_5_4 = Rx(90)  @ Rz(q5)
-    R_6_5 = Rx(-90) @ Ry(180) @ Rz(q6)
-
-    T_6_0 = (
-        T(R_1_0, P_1org_0) @
-        T(R_2_1, P_2org_1) @
-        T(R_3_2, P_3org_2) @
-        T(R_4_3, P_4org_3) @
-        T(R_5_4, P_5org_4) @
-        T(R_6_5, P_6org_5)
-    )
-
-    return T_6_0
+from direct_kinematics import direct_kinematics_T
 
 # Gérer limites articulaires parce que la cinématique inverse peut proposer des angles hors limites
 def gerer_limites(q):
@@ -60,7 +33,7 @@ def jacobien_num(q, p_target, R_target, eps_deg=1e-2):
     - position en mm
     - orientation en radians
     """
-    T0 = dk_T(q)
+    T0 = direct_kinematics_T(q)
     p0 = T0[:3, 3]
     R0 = T0[:3, :3]
 
@@ -76,7 +49,7 @@ def jacobien_num(q, p_target, R_target, eps_deg=1e-2):
         q1 = q.copy()
         q1[i] += eps_deg
 
-        T1 = dk_T(q1)
+        T1 = direct_kinematics_T(q1)
         p1 = T1[:3, 3]
         R1 = T1[:3, :3]
 
@@ -177,7 +150,7 @@ def print_solutions(solutions):
             print(f"  q{j}: {angle:8.3f} deg")
         print()
 def euler_zyx_from_q(q_deg):
-    T0 = dk_T(q_deg)
+    T0 = direct_kinematics_T(q_deg)
     R0 = T0[:3, :3]
     gamma, beta, alpha = R.from_matrix(R0).as_euler('ZYX', degrees=True)
     return alpha, beta, gamma
@@ -188,5 +161,3 @@ alpha, beta, gamma = 0, 90, -180
 
 solutions = cin__inv_toutes_solutions(x, y, z, alpha, beta, gamma)
 print_solutions(solutions)
-
-

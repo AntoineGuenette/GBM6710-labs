@@ -1,19 +1,21 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as rot
 
-def Rx(theta: float) -> np.array:
-    """Rotation around x-axis (degrees)."""
+from meca500_params import *
+
+def rotmat_x_deg(theta: float) -> np.array:
+    """Rotation matrix around x-axis (degrees)."""
     return rot.from_euler('x', theta, degrees=True).as_matrix()
 
-def Ry(theta: float) -> np.array:
-    """Rotation around y-axis (degrees)."""
+def rotmat_y_deg(theta: float) -> np.array:
+    """Rotation matrix around y-axis (degrees)."""
     return rot.from_euler('y', theta, degrees=True).as_matrix()
 
-def Rz(theta: float) -> np.array:
-    """Rotation around z-axis (degrees)."""
+def rotmat_z_deg(theta: float) -> np.array:
+    """Rotation matrix around z-axis (degrees)."""
     return rot.from_euler('z', theta, degrees=True).as_matrix()
 
-def T(R: np.array, P: np.array) -> np.array:
+def transform_mat(R: np.array, P: np.array) -> np.array:
     """
     Homogeneous transformation matrix from rotation R and position P.
     """
@@ -22,35 +24,35 @@ def T(R: np.array, P: np.array) -> np.array:
     T[0:3, 3] = P
     return T
 
-def myRotm2eul(R: np.array, raise_warning: bool=True) -> tuple:
+def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
     """
     Return the euler angles from a rotation matrix following the mobile xyz convention.
 
     Parameters:
-        R (np.array): 3x3 rotation matrix
-        raise_warning (bool): Whether to raise a warning when close to a representation singularity.
+        rotmat (np.array): 3x3 rotation matrix
+        verbose (bool): Whether to print verbose information about representation singularities.
 
     Returns:
         alpha (float): rotation around x' in degrees
         beta (float): rotation around y' in degrees
         gamma (float): rotation around z' in degrees
     """
-    if R[0, 2] == 1 or R[0, 2] == -1:
+    if rotmat[0, 2] == 1 or rotmat[0, 2] == -1:
         # Representation singularity (|β| = 90°)
         alpha_rad = 0
-        beta_rad = R[0, 2] * (np.pi / 2)
-        gamma_rad = np.arctan2(R[1, 0], R[1, 1])
+        beta_rad = rotmat[0, 2] * (np.pi / 2)
+        gamma_rad = np.arctan2(rotmat[1, 0], rotmat[1, 1])
     else:
-        alpha_rad = np.arctan2(-R[1, 2], R[2, 2])
-        beta_rad = np.arcsin(R[0, 2])
-        gamma_rad = np.arctan2(-R[0, 1], R[0, 0])
+        alpha_rad = np.arctan2(-rotmat[1, 2], rotmat[2, 2])
+        beta_rad = np.arcsin(rotmat[0, 2])
+        gamma_rad = np.arctan2(-rotmat[0, 1], rotmat[0, 0])
 
     # Convert radians to degrees
     alpha = np.degrees(alpha_rad) 
     beta = np.degrees(beta_rad)
 
     # Warn when approaching representation singularity (89˚ < |β| < 90°)
-    if 89.0 < abs(beta) < 90.0 and raise_warning:
+    if 89.0 < abs(beta) < 90.0 and verbose:
         print(f"WARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α may be ill-conditioned.")
         
     gamma = np.degrees(gamma_rad)
