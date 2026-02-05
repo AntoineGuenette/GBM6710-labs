@@ -62,8 +62,13 @@ def test_direct_kinematics_runs(joint_angles: list, position_expected: list, eul
     assert np.allclose(position, position_expected, atol=1e-3)
 
     # Check Euler angles
-    # Near representation singularity (89˚ < |β| < 90°), alpha is ill-conditioned
+    # Near representation singularity (89˚ < |β| < 90°), alpha and gamma are ill-conditioned
     if 89.0 < abs(euler_expected[1]) < 90.0:
+        # Alpha (check with bigger tolerance)
+        assert np.isclose(euler_angles[0], euler_expected[0], atol=0.5)
+        # Beta (Unchanged)
         assert np.isclose(euler_angles[1], euler_expected[1], atol=1e-3)
+        # Gamma (check with bigger tolerance)
+        assert np.isclose(euler_angles[2], euler_expected[2], atol=0.5)
     else:
-        assert np.allclose(euler_angles[:2], euler_expected[:2], atol=1e-3)
+        assert np.allclose(euler_angles, euler_expected, atol=1e-3)

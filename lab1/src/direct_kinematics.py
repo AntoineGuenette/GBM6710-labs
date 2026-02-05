@@ -19,7 +19,7 @@ def direct_kinematics_T(joint_angles: list) -> np.array:
     R_3_2 = rotmat_z_deg(-90) @ rotmat_z_deg(joint_angles[2])
     R_4_3 = rotmat_x_deg(-90) @ rotmat_z_deg(joint_angles[3])
     R_5_4 = rotmat_x_deg(90)  @ rotmat_z_deg(joint_angles[4])
-    R_6_5 = rotmat_x_deg(-90) @ rotmat_y_deg(180) @ rotmat_z_deg(joint_angles[5])
+    R_6_5 = rotmat_x_deg(-90) @ rotmat_z_deg(180) @ rotmat_z_deg(joint_angles[5])
 
     # Transformations
     T_6_0 = (

@@ -58,15 +58,6 @@ def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
         
     gamma = np.degrees(gamma_rad)
 
-    # Adjust angles to be in the desired range
-    alpha = alpha + 180 if alpha < 0 else alpha - 180 if alpha > 0 else alpha
-    beta = -beta
-
-    # For gamma, no adjustment needed, even if the angles do not correspond to the expected values.
-    # From Mecademic documentation (https://mecademic.com/insights/academic-tutorials/space-orientation-euler-angles/):
-    # In the chosen Euler angle convention, angles α and β define this direction, while angle γ is
-    # ignored because it corresponds to a parasitic rotation that is uncontrollable.
-
     return alpha, beta, gamma
 
 def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
