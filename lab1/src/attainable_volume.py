@@ -28,10 +28,10 @@ def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     # Iterate over remaining joints
     for theta2 in joint_ranges[1]:
         for theta3 in joint_ranges[2]:
-                for theta5 in joint_ranges[4]:
-                    joint_angles = [theta1_fixed, theta2, theta3, theta4_fixed, theta5, theta6_fixed]
-                    pos, _ = direct_kinematics_position(joint_angles, verbose=False)
-                    positions.append(pos)
+            for theta5 in joint_ranges[4]:
+                joint_angles = [theta1_fixed, theta2, theta3, theta4_fixed, theta5, theta6_fixed]
+                pos, _ = direct_kinematics_position(joint_angles, verbose=False)
+                positions.append(pos)
     
     # Convert to numpy array
     positions = np.array(positions)

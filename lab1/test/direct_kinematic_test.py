@@ -6,7 +6,7 @@ import os
 # Allow import from src/
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lab1.src.direct_kinematics import direct_kinematics
+from lab1.src.direct_kinematics import direct_kinematics_position
 
 @pytest.mark.parametrize(
     "joint_angles, position_expected, euler_expected",
@@ -49,7 +49,7 @@ from lab1.src.direct_kinematics import direct_kinematics
     ],
 )
 def test_direct_kinematics_runs(joint_angles: list, position_expected: list, euler_expected: list):
-    position, euler_angles = direct_kinematics(joint_angles)
+    position, euler_angles = direct_kinematics_position(joint_angles)
 
     # Check shapes
     assert isinstance(position, np.ndarray)
