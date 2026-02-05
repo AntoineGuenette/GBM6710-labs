@@ -2,7 +2,6 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 from meca500_params import *
-from utils import orientation_error
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""
@@ -86,16 +85,17 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
     T0 = direct_kinematics_T(joint_angles)
     p_current = T0[:3, 3]
     R_current = T0[:3, :3]
+    euler_current = np.array(rotmat_to_euler_xyz(R_current, verbose=False))
+    euler_target = np.array(rotmat_to_euler_xyz(R_target, verbose=False))
 
     # Error at the current configuration
     e0 = np.hstack([
         p_target - p_current,
-        orientation_error(R_target, R_current)
+        euler_target - euler_current
     ])
 
     # Numerical Jacobian initialization
     J = np.zeros((6, 6))
-    step_rad = np.deg2rad(eps_deg)
 
     # Finite difference approximation
     for i in range(6):
@@ -105,13 +105,14 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         T1 = direct_kinematics_T(q_perturbed)
         p_perturbed = T1[:3, 3]
         R_perturbed = T1[:3, :3]
+        euler_perturbed = np.array(rotmat_to_euler_xyz(R_perturbed, verbose=False))
 
         e1 = np.hstack([
             p_target - p_perturbed,
-            orientation_error(R_target, R_perturbed)
+            euler_perturbed - euler_current
         ])
 
-        J[:, i] = (e1 - e0) / step_rad
+        J[:, i] = (e1 - e0) / eps_deg
 
     return J, e0
 

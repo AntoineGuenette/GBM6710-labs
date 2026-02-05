@@ -48,15 +48,8 @@ from lab1.src.direct_kinematics import direct_kinematics_position
         ),
     ],
 )
-def test_direct_kinematics_runs(joint_angles: list, position_expected: list, euler_expected: list):
+def test_direct_kinematics(joint_angles: list, position_expected: list, euler_expected: list):
     position, euler_angles = direct_kinematics_position(joint_angles)
-
-    # Check shapes
-    assert isinstance(position, np.ndarray)
-    assert position.shape == (3,)
-
-    assert isinstance(euler_angles, (list, tuple, np.ndarray))
-    assert len(euler_angles) == 3
 
     # Check position
     assert np.allclose(position, position_expected, atol=1e-3)

@@ -12,8 +12,8 @@ def solve_inverse_kinematics_seed(
     beta: float,
     gamma: float,
     initial_guess: np.array,
-    max_iters: int = 60,
-    position_tolerance: float = 1.0,
+    max_iters: int = 100,
+    position_tolerance: float = 1e-3,
     orientation_tolerance: float = 1.0,
     damping: float = 1e-2,
     gain: float = 0.6,
@@ -41,6 +41,8 @@ def solve_inverse_kinematics_seed(
     Returns:
         joint_angles (np.array): Solution joint angles (degrees).
         success (bool): True if solution converged, False otherwise.
+        position_error (float): Final position error (mm).
+        score (float): Final score (sum of position and orientation errors).
     """
     # Target pose
     target_position = np.array([x, y, z], dtype=float)
@@ -51,13 +53,14 @@ def solve_inverse_kinematics_seed(
     for iteration in range(max_iters):
         J, error = numerical_jacobian(joint_angles, target_position, target_rotation)
         position_error = np.linalg.norm(error[:3])
-        orientation_error_norm = np.linalg.norm(error[3:])
+        orientation_error = np.linalg.norm(error[3:])
+        score = position_error + orientation_error
 
         if verbose and (iteration % 10 == 0):
-            print(f"  it={iteration:3d} | pos_err={position_error:8.3f} | rot_err={orientation_error_norm:8.4e}")
+            print(f"  it={iteration:3d} | pos_err={position_error:8.3f} | rot_err={orientation_error:8.4e} | score={score:8.3f}")
 
-        if position_error < position_tolerance and orientation_error_norm < orientation_tolerance:
-            return enforce_joint_limits(joint_angles), True
+        if position_error < position_tolerance and orientation_error < orientation_tolerance:
+            return enforce_joint_limits(joint_angles), True, score
 
         # Damped Least Squares step
         A = J @ J.T + (damping ** 2) * np.eye(6)
@@ -67,7 +70,7 @@ def solve_inverse_kinematics_seed(
         joint_angles += gain * np.rad2deg(delta_q)
         joint_angles = enforce_joint_limits(joint_angles)
 
-    return joint_angles, False
+    return joint_angles, False, score
 
 def inverse_kinematics(
     x: float,
@@ -77,8 +80,8 @@ def inverse_kinematics(
     beta: float,
     gamma: float,
     initial_guesses: list = None,
-    max_iters: int = 80,
-    position_tolerance: float = 1.0,
+    max_iters: int = 100,
+    position_tolerance: float = 1e-3,
     orientation_tolerance: float = 1.0,
     damping: float = 1e-2,
     gain: float = 0.6,
@@ -106,7 +109,7 @@ def inverse_kinematics(
         verbose (bool): Whether to print iteration info to console.
 
     Returns:
-        solutions (list): List of joint configurations (degrees) that solve the inverse kinematics.
+        best_solution np.array: The best solution (joint angles in degrees) that satisfies the inverse kinematics constraints.
     """
     # Default initial guesses (seeds)
     if initial_guesses is None:
@@ -120,10 +123,12 @@ def inverse_kinematics(
             np.array([0, 0, 0, -90, 0, 0]),
         ]
 
-    solutions = []
+    # Initialize best solution
+    best_solution = None
+    best_score = float('inf')
 
     for seed in initial_guesses:
-        joint_angles, success = solve_inverse_kinematics_seed(
+        joint_angles, success, score = solve_inverse_kinematics_seed(
             x, y, z, alpha, beta, gamma,
             initial_guess=seed,
             max_iters=max_iters,
@@ -135,16 +140,11 @@ def inverse_kinematics(
         )
 
         if success:
-            # Avoid duplicate solutions
-            is_new_solution = True
-            for prev in solutions:
-                if np.linalg.norm(prev - joint_angles) < 1.0:
-                    is_new_solution = False
-                    break
-            if is_new_solution:
-                solutions.append(joint_angles)
-
-    return solutions
+            # Keep only the best solution (not already in the list)
+            if score < best_score:
+                best_solution = joint_angles
+                best_score = score
+    return best_solution
 
 
 if __name__ == "__main__":
@@ -161,18 +161,16 @@ if __name__ == "__main__":
     print("\n")
 
     # Solve IK
-    solutions = inverse_kinematics(
+    solution = inverse_kinematics(
         x, y, z, alpha, beta, gamma,
         verbose=True
     )
 
     # Display solutions
-    if not solutions:
+    if solution is None:
         print("\nNo solution found.")
     else:
-        print(f"\n{len(solutions)} solution(s) found:\n")
-        for i, q in enumerate(solutions, 1):
-            print(f"SOLUTION {i}")
-            for j, angle in enumerate(q, 1):
-                print(f"    Joint {j} angle: {angle:8.3f} deg")
-            print()
+        print(f"\nBest solution found:\n")
+        for j, angle in enumerate(solution, 1):
+            print(f"    Joint {j} angle: {angle:8.3f} deg")
+        print()

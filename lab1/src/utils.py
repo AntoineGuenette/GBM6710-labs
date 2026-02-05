@@ -9,8 +9,3 @@ def enforce_joint_limits(joint_angles):
     for i, (low, high) in enumerate(JOINT_LIMITS):
         q[i] = np.clip(q[i], low, high)
     return q
-
-def orientation_error(R_target, R_current):
-    """Calculate the orientation error between the target and current rotation matrices."""
-    R_err = R_target @ R_current.T
-    return R.from_matrix(R_err).as_rotvec()
