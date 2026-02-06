@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from lab1.src.transforms import numerical_jacobian
-from lab1.src.utils import enforce_joint_limits
+from transforms import numerical_jacobian
+from utils import enforce_joint_limits
 
 def inverse_kinematics(
     x: float,
@@ -13,10 +13,10 @@ def inverse_kinematics(
     gamma: float,
     initial_guesses=None,
     max_iters: int = 100,
-    position_tolerance: float = 1e-10,
-    orientation_tolerance: float = 1e-10,
-    damping: float = 1e-2,
-    gain: float = 0.6,
+    position_tolerance: float = 1e-2,
+    orientation_tolerance: float = 1e-2,
+    damping: float = 0.1,
+    gain: float = 0.65,
     verbose: bool = False
 ) -> np.array:
     """
@@ -48,7 +48,7 @@ def inverse_kinematics(
     # Target pose
     target_position = np.array([x, y, z], dtype=float)
     target_rotation = R.from_euler(
-        'ZYX', [gamma, beta, alpha], degrees=True
+        'zyx', [gamma, beta, alpha], degrees=True
     ).as_matrix()
 
     # Set of initial guesses (seeds)
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     beta = float(input("Enter target beta angle (degrees): "))
     gamma = float(input("Enter target gamma angle (degrees): "))
 
-    print("\n")
+    print()
 
     # Solve IK
     solution = inverse_kinematics(

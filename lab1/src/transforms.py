@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from lab1.src.meca500_params import *
+from meca500_params import *
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""
@@ -63,11 +63,9 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
     """
     Compute the numerical Jacobian J (6x6) and the error vector e (6,) for a given target pose.
 
-    The error vector is defined as:
-        e = [p_target - p_current, rotvec(R_target * R_current^T)]
-
-    - position error in millimeters
-    - orientation error in radians
+    Error definition:
+        - Position error: p_target - p_current  (mm)
+        - Orientation error: wrapped Euler angle difference (degrees), scaled to radians
 
     Parameters:
         joint_angles (np.array): Joint angles in degrees (6,)
@@ -79,25 +77,40 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         J (np.array): Numerical Jacobian matrix (6x6)
         e (np.array): Error vector at the current configuration (6,)
     """
+    import numpy as np
     from direct_kinematics import direct_kinematics_T
 
-    # Forward kinematics at the current configuration
+    # Hyperparameters / helpers
+    ORIENTATION_WEIGHT = np.pi / 180.0  # deg → rad scaling
+
+    def wrap_angle_deg(angle):
+        """Wrap angles to [-180, 180] degrees."""
+        return (angle + 180.0) % 360.0 - 180.0
+
+    # Forward kinematics (current)
     T0 = direct_kinematics_T(joint_angles)
     p_current = T0[:3, 3]
     R_current = T0[:3, :3]
-    euler_current = np.array(rotmat_to_euler_xyz(R_current, verbose=False))
-    euler_target = np.array(rotmat_to_euler_xyz(R_target, verbose=False))
 
-    # Error at the current configuration
+    euler_current = np.array(
+        rotmat_to_euler_xyz(R_current, verbose=False)
+    )
+    euler_target = np.array(
+        rotmat_to_euler_xyz(R_target, verbose=False)
+    )
+
+    # Error at current configuration
+    euler_error = wrap_angle_deg(euler_target - euler_current)
+
     e0 = np.hstack([
         p_target - p_current,
-        np.deg2rad(euler_target - euler_current)
+        ORIENTATION_WEIGHT * euler_error
     ])
 
-    # Numerical Jacobian initialization
+    # Numerical Jacobian
     J = np.zeros((6, 6))
+    eps_rad = np.deg2rad(eps_deg)
 
-    # Finite difference approximation
     for i in range(6):
         q_perturbed = joint_angles.copy()
         q_perturbed[i] += eps_deg
@@ -105,15 +118,18 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         T1 = direct_kinematics_T(q_perturbed)
         p_perturbed = T1[:3, 3]
         R_perturbed = T1[:3, :3]
-        euler_perturbed = np.array(rotmat_to_euler_xyz(R_perturbed, verbose=False))
+
+        euler_perturbed = np.array(
+            rotmat_to_euler_xyz(R_perturbed, verbose=False)
+        )
+
+        euler_error_pert = wrap_angle_deg(euler_target - euler_perturbed)
 
         e1 = np.hstack([
             p_target - p_perturbed,
-            np.deg2rad(euler_target - euler_perturbed)
+            ORIENTATION_WEIGHT * euler_error_pert
         ])
 
-        eps_rad = np.deg2rad(eps_deg)
         J[:, i] = (e1 - e0) / eps_rad
 
     return J, e0
-

@@ -60,5 +60,14 @@ def test_inverse_kinematics(joint_angles_expected: list, position: list, euler: 
 
     # Check position
     assert np.allclose(resulting_pos, position, atol=0.1)
-    # Check Euler angles
-    assert np.allclose(resulting_eul, euler, atol=0.1)
+
+    # Near representation singularity (89˚ < |β| < 90°), alpha and gamma are ill-conditioned
+    if 89.0 < abs(euler[1]) < 90.0:
+        # Alpha (check with bigger tolerance)
+        assert np.isclose(resulting_eul[0], euler[0], atol=0.5)
+        # Beta (Unchanged)
+        assert np.isclose(resulting_eul[1], euler[1], atol=0.1)
+        # Gamma (check with bigger tolerance)
+        assert np.isclose(resulting_eul[2], euler[2], atol=0.5)
+    else:
+        assert np.allclose(resulting_eul, euler, atol=0.1)
