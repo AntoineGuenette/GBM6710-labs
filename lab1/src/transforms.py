@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from meca500_params import *
+from lab1.src.meca500_params import *
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""
@@ -91,7 +91,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
     # Error at the current configuration
     e0 = np.hstack([
         p_target - p_current,
-        euler_target - euler_current
+        np.deg2rad(euler_target - euler_current)
     ])
 
     # Numerical Jacobian initialization
@@ -109,10 +109,11 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
 
         e1 = np.hstack([
             p_target - p_perturbed,
-            euler_perturbed - euler_current
+            np.deg2rad(euler_target - euler_perturbed)
         ])
 
-        J[:, i] = (e1 - e0) / eps_deg
+        eps_rad = np.deg2rad(eps_deg)
+        J[:, i] = (e1 - e0) / eps_rad
 
     return J, e0
 

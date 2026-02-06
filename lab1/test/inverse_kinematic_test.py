@@ -51,13 +51,14 @@ from lab1.src.inverse_kinematics import inverse_kinematics
 )
 def test_inverse_kinematics(joint_angles_expected: list, position: list, euler: list):
     solution = inverse_kinematics(x=position[0], y=position[1], z=position[2],
-                                            alpha=euler[0], beta=euler[1], gamma=euler[2],
-                                            verbose=False)
+                                  alpha=euler[0], beta=euler[1], gamma=euler[2],
+                                  verbose=False)
+
+    assert solution is not None, "No solution found by inverse kinematics."
 
     resulting_pos, resulting_eul = direct_kinematics_position(solution)
 
     # Check position
     assert np.allclose(resulting_pos, position, atol=0.1)
-
     # Check Euler angles
-    assert np.allclose(resulting_eul, euler, atol=180)
+    assert np.allclose(resulting_eul, euler, atol=0.1)
