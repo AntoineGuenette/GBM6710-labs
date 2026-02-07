@@ -15,7 +15,7 @@ def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
         num_samples_per_joint (int): Number of samples to take for each joint.
 
     Returns:
-        positions (np.array): Array of attainable end-effector positions.
+        positions (np.array): Array of attainable wrist flange positions.
     """
     joint_ranges = [np.linspace(low, high, num_samples_per_joint) for low, high in JOINT_LIMITS]
     positions = []
@@ -23,7 +23,7 @@ def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     # Reduced joint space
     theta1_fixed = 0.0 # Fix joint 1 to sample XZ plane
     theta4_fixed = 0.0 # Fix joint 4 to sample XZ plane
-    theta6_fixed = 0.0 # Fix joint 6 since it affects only end-effector orientation
+    theta6_fixed = 0.0 # Fix joint 6 since it affects only wrist flange orientation
 
     # Iterate over remaining joints
     for theta2 in joint_ranges[1]:
@@ -56,7 +56,7 @@ def sample_xy_slices(z_slices: np.array, num_samples_per_joint: int=10) -> dict:
     # Reduced joint space
     theta5_vals = np.linspace(JOINT_LIMITS[4][0], JOINT_LIMITS[4][1], 3) # Sample fewer values for joint 5
     theta4_fixed = 0.0 # Fix joint 4 to reduce complexity
-    theta6_fixed = 0.0 # Fix joint 6 since it affects only end-effector orientation
+    theta6_fixed = 0.0 # Fix joint 6 since it affects only wrist flange orientation
 
     # Iterate over remaining joints
     for theta1 in joint_ranges[0]:
@@ -80,7 +80,7 @@ def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, s
 
     Parameters:
         z_slices (np.array): Array of Z slices used for sampling.
-        positions (np.array): Array of attainable end-effector positions (Nx3).
+        positions (np.array): Array of attainable wrist flange positions (Nx3).
         alpha (float): Alpha parameter for alpha shape
         savepath (str): Directory to save the figure (optional)
     """
@@ -109,7 +109,7 @@ def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, s
         )
 
     ax.set_aspect('equal')
-    ax.set_title('Région atteignable du Meca500 (plan XZ)')
+    ax.set_title('(A) Région atteignable par la bride\ndu poignet du Meca500 dans le plan XZ')
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Z (mm)')
     ax.legend(fontsize=8)
@@ -162,7 +162,7 @@ def plot_xy_contours(slices: dict, alpha: float=0.01, savepath: str=None):
         ax.fill(x, y, color='tab:green', alpha=0.25)
 
     ax.set_aspect('equal')
-    ax.set_title("Région atteignable du Meca500 (plans XY)")
+    ax.set_title("(B) Volume atteignable par la bride\ndu poignet du Meca500")
     ax.set_xlabel("X (mm)")
     ax.set_ylabel("Y (mm)")
     ax.legend(fontsize=8)

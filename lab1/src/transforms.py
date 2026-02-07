@@ -53,7 +53,7 @@ def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
 
     # Warn when approaching representation singularity (89˚ < |β| < 90°)
     if 89.0 < abs(beta) < 90.0 and verbose:
-        print(f"WARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α may be ill-conditioned.")
+        print(f"\nWARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α and γ may be ill-conditioned.")
         
     gamma = np.degrees(gamma_rad)
 

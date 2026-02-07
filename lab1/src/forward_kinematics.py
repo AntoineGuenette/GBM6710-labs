@@ -5,7 +5,7 @@ from transforms import rotmat_x_deg, rotmat_z_deg, transform_mat, rotmat_to_eule
 
 def forward_kinematics_T(joint_angles: list) -> np.array:
     """
-    Calculate the homogeneous transformation matrix of the end-effector given joint angles.
+    Calculate the homogeneous transformation matrix of the wrist flange given joint angles.
 
     Parameters:
         joint_angles (list): Joint angles in degrees (theta 1 to theta 6).
@@ -35,7 +35,7 @@ def forward_kinematics_T(joint_angles: list) -> np.array:
 
 def forward_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
     """
-    Calculate the end-effector position and euler angles of the meca500 robotic arm given joint
+    Calculate the wrist flange position and euler angles of the meca500 robotic arm given joint
     angles.
 
     Parameters:
@@ -43,8 +43,8 @@ def forward_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple
         verbose (bool): Whether to print verbose information about representation singularities.
 
     Returns:
-        position (np.array): The 3D position of the end-effector.
-        euler_angles (np.array): The Euler angles of the end-effector.
+        position (np.array): The 3D position of the wrist flange.
+        euler_angles (np.array): The Euler angles of the wrist flange.
     """
 
     # Joint limits check
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     joint_angles = [joint_1_angle, joint_2_angle, joint_3_angle,
                     joint_4_angle, joint_5_angle, joint_6_angle]
     
-    # Calculate the end-effector position and euler angles
+    # Calculate the wrist flange position and orientation
     position, euler_angles = forward_kinematics_position(joint_angles)
-    print("\nEnd-Effector Position and Euler Angles:")
+    print("\nWrist flange Position and Orientation:")
     print(f"(x={position[0]:.3f}mm, y={position[1]:.3f}mm, z={position[2]:.3f}mm)")
     print(f"(α={euler_angles[0]:.3f}˚, β={euler_angles[1]:.3f}˚, γ={euler_angles[2]:.3f}˚)\n")
