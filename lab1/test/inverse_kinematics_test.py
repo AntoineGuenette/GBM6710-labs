@@ -56,6 +56,7 @@ def test_inverse_kinematics(joint_angles_expected: list, position: list, euler: 
     # Check position
     assert np.allclose(resulting_pos, position, atol=1e-2)
 
+    # Check orientation
     # Near representation singularity (89˚ < |β| < 90°), alpha and gamma are ill-conditioned
     if 89.0 < abs(euler[1]) < 90.0:
         # Alpha (check with bigger tolerance)

@@ -8,12 +8,12 @@ def forward_kinematics_T(joint_angles: list) -> np.array:
     Calculate the homogeneous transformation matrix of the wrist flange given joint angles.
 
     Parameters:
-        joint_angles (list): Joint angles in degrees (theta 1 to theta 6).
+        joint_angles (list): Joint angles in degrees.
 
     Returns:
         T_6_0 (np.array): 4x4 homogeneous transformation matrix.
     """
-    # Rotation matrices (offsets + joints)
+    # Rotation matrices (offsets and joints)
     R_1_0 = np.eye(3) @ rotmat_z_deg(joint_angles[0])
     R_2_1 = rotmat_x_deg(-90) @ rotmat_z_deg(joint_angles[1])
     R_3_2 = rotmat_z_deg(-90) @ rotmat_z_deg(joint_angles[2])
@@ -35,12 +35,12 @@ def forward_kinematics_T(joint_angles: list) -> np.array:
 
 def forward_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
     """
-    Calculate the wrist flange position and euler angles of the meca500 robotic arm given joint
+    Calculate the wrist flange position and orientation of the meca500 robotic arm given joint
     angles.
 
     Parameters:
-        joint_angles (list): Joint angles in degrees (theta 1 to theta 6).
-        verbose (bool): Whether to print verbose information about representation singularities.
+        joint_angles (list): Joint angles in degrees.
+        verbose (bool): Whether to print information about representation singularities.
 
     Returns:
         position (np.array): The 3D position of the wrist flange.
@@ -52,8 +52,10 @@ def forward_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple
         if not (low <= angle <= high):
             raise ValueError(f"Joint angle {angle} out of bounds [{low}, {high}]")
 
+    # Compute the transformation matrix of the wrist flange
     T_6_0 = forward_kinematics_T(joint_angles)
 
+    # Extract the position and euler angles
     position = T_6_0[0:3, 3]
     euler_angles = rotmat_to_euler_xyz(T_6_0[0:3, 0:3], verbose=verbose)
 
@@ -76,6 +78,6 @@ if __name__ == "__main__":
     
     # Calculate the wrist flange position and orientation
     position, euler_angles = forward_kinematics_position(joint_angles)
-    print("\nWrist flange Position and Orientation:")
+    print("\nWrist flange position and orientation:")
     print(f"(x={position[0]:.3f}mm, y={position[1]:.3f}mm, z={position[2]:.3f}mm)")
     print(f"(α={euler_angles[0]:.3f}˚, β={euler_angles[1]:.3f}˚, γ={euler_angles[2]:.3f}˚)\n")

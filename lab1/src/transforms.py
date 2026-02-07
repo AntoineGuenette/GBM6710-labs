@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 from meca500_params import *
+from utils import wrap_angle_deg
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""
@@ -16,9 +17,7 @@ def rotmat_z_deg(theta: float) -> np.array:
     return R.from_euler('z', theta, degrees=True).as_matrix()
 
 def transform_mat(R: np.array, P: np.array) -> np.array:
-    """
-    Homogeneous transformation matrix from rotation R and position P.
-    """
+    """Homogeneous transformation matrix from rotation R and position P."""
     T = np.eye(4)
     T[0:3, 0:3] = R
     T[0:3, 3] = P
@@ -30,7 +29,7 @@ def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
 
     Parameters:
         rotmat (np.array): 3x3 rotation matrix
-        verbose (bool): Whether to print verbose information about representation singularities.
+        verbose (bool): Whether to print information about representation singularities.
 
     Returns:
         alpha (float): rotation around x' in degrees
@@ -50,12 +49,11 @@ def rotmat_to_euler_xyz(rotmat: np.array, verbose: bool=True) -> tuple:
     # Convert radians to degrees
     alpha = np.degrees(alpha_rad) 
     beta = np.degrees(beta_rad)
+    gamma = np.degrees(gamma_rad)
 
     # Warn when approaching representation singularity (89˚ < |β| < 90°)
     if 89.0 < abs(beta) < 90.0 and verbose:
-        print(f"\nWARNING : Close to a representation singularity : |β| = {abs(beta):.3f}˚. α and γ may be ill-conditioned.")
-        
-    gamma = np.degrees(gamma_rad)
+        print(f"\nWARNING : Close to a representation singularity : β = {beta:.3f}˚. α and γ may be ill-conditioned.")
 
     return alpha, beta, gamma
 
@@ -65,7 +63,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
 
     Error definition:
         - Position error: p_target - p_current  (mm)
-        - Orientation error: wrapped Euler angle difference (degrees), scaled to radians
+        - Orientation error: q_target - q_current  (radians)
 
     Parameters:
         joint_angles (np.array): Joint angles in degrees (6,)
@@ -78,58 +76,50 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         e (np.array): Error vector at the current configuration (6,)
     """
     import numpy as np
-    from lab1.src.forward_kinematics import forward_kinematics_T
+    from forward_kinematics import forward_kinematics_T
 
-    # Hyperparameters / helpers
-    ORIENTATION_WEIGHT = np.pi / 180.0  # deg → rad scaling
+    # Numerical Jacobian Initialization
+    J = np.zeros((6, 6))
 
-    def wrap_angle_deg(angle):
-        """Wrap angles to [-180, 180] degrees."""
-        return (angle + 180.0) % 360.0 - 180.0
+    # Convert finite difference step to radians
+    eps_rad = np.deg2rad(eps_deg)
 
     # Forward kinematics (current)
     T0 = forward_kinematics_T(joint_angles)
     p_current = T0[:3, 3]
     R_current = T0[:3, :3]
 
-    euler_current = np.array(
-        rotmat_to_euler_xyz(R_current, verbose=False)
-    )
-    euler_target = np.array(
-        rotmat_to_euler_xyz(R_target, verbose=False)
-    )
+    # Convert current and target rotations to Euler angles for error computation
+    euler_current = np.array(rotmat_to_euler_xyz(R_current, verbose=False))
+    euler_target = np.array(rotmat_to_euler_xyz(R_target, verbose=False))
 
-    # Error at current configuration
-    euler_error = wrap_angle_deg(euler_target - euler_current)
-
+    # Compute error vector at current configuration
     e0 = np.hstack([
         p_target - p_current,
-        ORIENTATION_WEIGHT * euler_error
+        np.deg2rad(wrap_angle_deg(euler_target - euler_current))
     ])
 
-    # Numerical Jacobian
-    J = np.zeros((6, 6))
-    eps_rad = np.deg2rad(eps_deg)
-
+    # Compute numerical Jacobian using finite differences
     for i in range(6):
+        # Perturb joint i by eps_deg
         q_perturbed = joint_angles.copy()
         q_perturbed[i] += eps_deg
 
+        # Forward kinematics for perturbed joint angles
         T1 = forward_kinematics_T(q_perturbed)
         p_perturbed = T1[:3, 3]
         R_perturbed = T1[:3, :3]
 
-        euler_perturbed = np.array(
-            rotmat_to_euler_xyz(R_perturbed, verbose=False)
-        )
+        # Convert perturbed rotation to Euler angles
+        euler_perturbed = np.array(rotmat_to_euler_xyz(R_perturbed, verbose=False))
 
-        euler_error_pert = wrap_angle_deg(euler_target - euler_perturbed)
-
+        # Compute error for perturbed configuration
         e1 = np.hstack([
             p_target - p_perturbed,
-            ORIENTATION_WEIGHT * euler_error_pert
+            np.deg2rad(wrap_angle_deg(euler_target - euler_perturbed))
         ])
 
+        # Finite difference approximation of the Jacobian column
         J[:, i] = (e1 - e0) / eps_rad
 
     return J, e0

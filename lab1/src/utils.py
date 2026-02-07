@@ -9,3 +9,7 @@ def enforce_joint_limits(joint_angles):
     for i, (low, high) in enumerate(JOINT_LIMITS):
         q[i] = np.clip(q[i], low, high)
     return q
+
+def wrap_angle_deg(angle):
+    """Wrap angles to [-180, 180] degrees."""
+    return (angle + 180.0) % 360.0 - 180.0

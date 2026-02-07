@@ -49,7 +49,7 @@ def test_forward_kinematics(joint_angles: list, position_expected: list, euler_e
     # Check position
     assert np.allclose(position, position_expected, atol=1e-3)
 
-    # Check Euler angles
+    # Check orientation
     # Near representation singularity (89˚ < |β| < 90°), alpha and gamma are ill-conditioned
     if 89.0 < abs(euler_expected[1]) < 90.0:
         # Alpha (check with bigger tolerance)

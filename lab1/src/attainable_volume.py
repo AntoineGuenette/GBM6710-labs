@@ -21,8 +21,8 @@ def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     positions = []
 
     # Reduced joint space
-    theta1_fixed = 0.0 # Fix joint 1 to sample XZ plane
-    theta4_fixed = 0.0 # Fix joint 4 to sample XZ plane
+    theta1_fixed = 0.0 # Fix joint 1 to sample only the XZ plane
+    theta4_fixed = 0.0 # Fix joint 4 to sample only the XZ plane
     theta6_fixed = 0.0 # Fix joint 6 since it affects only wrist flange orientation
 
     # Iterate over remaining joints
@@ -75,9 +75,7 @@ def sample_xy_slices(z_slices: np.array, num_samples_per_joint: int=10) -> dict:
     return slices
 
 def plot_xz_contour(ax, z_slices: np.array, positions: np.array, alpha: float=0.1):
-    """
-    Plot the contour of the reachable region in the XZ plane on a given Axes.
-    """
+    """Plot the contour of the reachable region in the XZ plane on a given axis."""
     z_colors = get_z_slice_colors(z_slices)
 
     # Extract XZ coordinates
@@ -107,21 +105,20 @@ def plot_xz_contour(ax, z_slices: np.array, positions: np.array, alpha: float=0.
     ax.set_ylabel('Z (mm)')
 
 def plot_xy_contours(ax, slices: dict, alpha: float=0.01):
-    """
-    Plot filled alpha-shape contours for multiple XY slices on a given Axes.
-    """
+    """Plot filled alpha-shape contours for multiple XY slices on a given Axes."""
     z_colors = get_z_slice_colors(np.array(list(slices.keys())))
 
     for z, points in slices.items():
-        if points.shape[0] < 10:
-            continue
 
+        # Extract XY coordinates
         points_xy = points[:, [0, 1]]
 
+        # Filter out outliers for better alpha shape results
         r = np.linalg.norm(points_xy, axis=1)
         mask = r < np.percentile(r, 99)
         points_xy = points_xy[mask]
 
+        # Compute alpha shape
         shape = alphashape.alphashape(points_xy, alpha)
         if shape.geom_type == "Polygon":
             poly = shape
@@ -130,6 +127,7 @@ def plot_xy_contours(ax, slices: dict, alpha: float=0.01):
         else:
             continue
 
+        # Plot contour
         x, y = poly.exterior.xy
         ax.plot(x, y, color=z_colors[z], linestyle='--', linewidth=2, label=f"z ≈ {int(z)} mm")
         ax.fill(x, y, color='tab:green', alpha=0.25)
@@ -140,16 +138,7 @@ def plot_xy_contours(ax, slices: dict, alpha: float=0.01):
     ax.set_ylabel("Y (mm)")
 
 def get_z_slice_colors(z_slices: np.array, cmap_name: str="plasma") -> dict:
-    """
-    Generate a consistent color mapping for Z slices.
-
-    Parameters:
-        z_slices (np.array): Array of Z slice values.
-        cmap_name (str): Matplotlib colormap name.
-
-    Returns:
-        custom_color_map (dict): keys = z_slice, values = RGBA color
-    """
+    """Get a color mapping for Z slices using a colormap."""
     cmap = plt.get_cmap(cmap_name)
     z_min, z_max = np.min(z_slices), np.max(z_slices)
     norm = plt.Normalize(vmin=z_min, vmax=z_max)

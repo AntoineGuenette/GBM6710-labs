@@ -28,10 +28,10 @@ def inverse_kinematics(
         x (float): Target x position in millimeters.
         y (float): Target y position in millimeters.
         z (float): Target z position in millimeters.
-        alpha (float): Target alpha angle in degrees (Euler ZYX convention).
-        beta (float): Target beta angle in degrees (Euler ZYX convention).
-        gamma (float): Target gamma angle in degrees (Euler ZYX convention).
-        initial_guesses (list): List of initial joint configurations (degrees). If None, a default
+        alpha (float): Target alpha angle in degrees.
+        beta (float): Target beta angle in degrees.
+        gamma (float): Target gamma angle in degrees.
+        initial_guesses (list): List of initial joint configurations in degrees. If None, a default
             set of seeds is used.
         max_iters (int): Maximum number of iterations per initial guess.
         position_tolerance (float): Position error tolerance in millimeters.
@@ -39,7 +39,7 @@ def inverse_kinematics(
         Euler angle error).
         damping (float): Damping factor for the DLS method.
         gain (float): Integration gain for joint updates.
-        verbose (bool): Whether to print iteration info to console.
+        verbose (bool): Whether to print iteration info to the console.
 
     Returns:
         best_solution (Optional(np.array)): Best joint configuration (degrees) satisfying the IK constraints,
@@ -67,6 +67,7 @@ def inverse_kinematics(
     if isinstance(initial_guesses, np.ndarray):
         initial_guesses = [initial_guesses]
 
+    # Initialization
     best_solution = None
     best_score = float("inf")
 
@@ -74,17 +75,20 @@ def inverse_kinematics(
         joint_angles = seed.astype(float)
 
         if verbose:
-            print("Solving IK with initial guess:", joint_angles)
+            print("\nSolving IK with initial guess:", joint_angles)
 
         for iteration in range(max_iters):
+            # Compute the jacobian and the errors
             J, error = numerical_jacobian(
                 joint_angles, target_position, target_rotation
             )
 
+            # Deduce the score via the position and orientation errors
             pos_err = np.linalg.norm(error[:3])
             rot_err = np.linalg.norm(error[3:])
             score = pos_err + rot_err
 
+            # Show optimization progress
             if verbose and iteration % 10 == 0:
                 print(
                     f"  it={iteration:3d} | "
@@ -93,9 +97,9 @@ def inverse_kinematics(
                     f"score={score:8.3f}"
                 )
 
+            # Save the solution only if it is better than the current best solution
             if pos_err < position_tolerance and rot_err < orientation_tolerance:
                 joint_angles = enforce_joint_limits(joint_angles)
-
                 if score < best_score:
                     best_solution = joint_angles.copy()
                     best_score = score
@@ -105,7 +109,7 @@ def inverse_kinematics(
             A = J @ J.T + (damping ** 2) * np.eye(6)
             delta_q = -J.T @ np.linalg.solve(A, error)
 
-            # Update joints (rad → deg)
+            # Update joints
             joint_angles += gain * np.rad2deg(delta_q)
             joint_angles = enforce_joint_limits(joint_angles)
 
@@ -123,8 +127,6 @@ if __name__ == "__main__":
     beta = float(input("Enter target beta angle (degrees): "))
     gamma = float(input("Enter target gamma angle (degrees): "))
 
-    print()
-
     # Solve IK
     solution = inverse_kinematics(
         x, y, z, alpha, beta, gamma,
@@ -135,7 +137,7 @@ if __name__ == "__main__":
     if solution is None:
         print("\nNo solution found.")
     else:
-        print(f"\nBest solution found:\n")
+        print(f"\nBest solution found:")
         for j, angle in enumerate(solution, 1):
             print(f"\tJoint {j} angle: {angle:8.3f} deg")
         print()
