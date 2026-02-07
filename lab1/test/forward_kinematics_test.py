@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from lab1.src.direct_kinematics import direct_kinematics_position
+from lab1.src.forward_kinematics import forward_kinematics_position
 
 @pytest.mark.parametrize(
     "joint_angles, position_expected, euler_expected",
@@ -43,8 +43,8 @@ from lab1.src.direct_kinematics import direct_kinematics_position
         ),
     ],
 )
-def test_direct_kinematics(joint_angles: list, position_expected: list, euler_expected: list):
-    position, euler_angles = direct_kinematics_position(joint_angles)
+def test_forward_kinematics(joint_angles: list, position_expected: list, euler_expected: list):
+    position, euler_angles = forward_kinematics_position(joint_angles)
 
     # Check position
     assert np.allclose(position, position_expected, atol=1e-3)

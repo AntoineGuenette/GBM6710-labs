@@ -1,9 +1,9 @@
 import numpy as np
 
 from meca500_params import *
-from transforms import rotmat_x_deg, rotmat_y_deg, rotmat_z_deg, transform_mat, rotmat_to_euler_xyz
+from transforms import rotmat_x_deg, rotmat_z_deg, transform_mat, rotmat_to_euler_xyz
 
-def direct_kinematics_T(joint_angles: list) -> np.array:
+def forward_kinematics_T(joint_angles: list) -> np.array:
     """
     Calculate the homogeneous transformation matrix of the end-effector given joint angles.
 
@@ -33,7 +33,7 @@ def direct_kinematics_T(joint_angles: list) -> np.array:
 
     return T_6_0
 
-def direct_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
+def forward_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
     """
     Calculate the end-effector position and euler angles of the meca500 robotic arm given joint
     angles.
@@ -52,7 +52,7 @@ def direct_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
         if not (low <= angle <= high):
             raise ValueError(f"Joint angle {angle} out of bounds [{low}, {high}]")
 
-    T_6_0 = direct_kinematics_T(joint_angles)
+    T_6_0 = forward_kinematics_T(joint_angles)
 
     position = T_6_0[0:3, 3]
     euler_angles = rotmat_to_euler_xyz(T_6_0[0:3, 0:3], verbose=verbose)
@@ -62,7 +62,7 @@ def direct_kinematics_position(joint_angles: list, verbose: bool=True) -> tuple:
 
 if __name__ == "__main__":
 
-    print("\n --- Meca500 Direct Kinematics --- \n")
+    print("\n --- Meca500 Forward Kinematics --- \n")
 
     joint_1_angle = float(input("Enter joint 1 angle (degrees): "))
     joint_2_angle = float(input("Enter joint 2 angle (degrees): "))
@@ -75,7 +75,7 @@ if __name__ == "__main__":
                     joint_4_angle, joint_5_angle, joint_6_angle]
     
     # Calculate the end-effector position and euler angles
-    position, euler_angles = direct_kinematics_position(joint_angles)
+    position, euler_angles = forward_kinematics_position(joint_angles)
     print("\nEnd-Effector Position and Euler Angles:")
     print(f"(x={position[0]:.3f}mm, y={position[1]:.3f}mm, z={position[2]:.3f}mm)")
     print(f"(α={euler_angles[0]:.3f}˚, β={euler_angles[1]:.3f}˚, γ={euler_angles[2]:.3f}˚)\n")

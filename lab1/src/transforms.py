@@ -78,7 +78,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         e (np.array): Error vector at the current configuration (6,)
     """
     import numpy as np
-    from direct_kinematics import direct_kinematics_T
+    from lab1.src.forward_kinematics import forward_kinematics_T
 
     # Hyperparameters / helpers
     ORIENTATION_WEIGHT = np.pi / 180.0  # deg → rad scaling
@@ -88,7 +88,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         return (angle + 180.0) % 360.0 - 180.0
 
     # Forward kinematics (current)
-    T0 = direct_kinematics_T(joint_angles)
+    T0 = forward_kinematics_T(joint_angles)
     p_current = T0[:3, 3]
     R_current = T0[:3, :3]
 
@@ -115,7 +115,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         q_perturbed = joint_angles.copy()
         q_perturbed[i] += eps_deg
 
-        T1 = direct_kinematics_T(q_perturbed)
+        T1 = forward_kinematics_T(q_perturbed)
         p_perturbed = T1[:3, 3]
         R_perturbed = T1[:3, :3]
 

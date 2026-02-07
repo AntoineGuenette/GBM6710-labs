@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from lab1.src.direct_kinematics import direct_kinematics_position
+from lab1.src.forward_kinematics import forward_kinematics_position
 from lab1.src.inverse_kinematics import inverse_kinematics
 
 @pytest.mark.parametrize(
@@ -51,10 +51,10 @@ def test_inverse_kinematics(joint_angles_expected: list, position: list, euler: 
 
     assert solution is not None, "No solution found by inverse kinematics."
 
-    resulting_pos, resulting_eul = direct_kinematics_position(solution)
+    resulting_pos, resulting_eul = forward_kinematics_position(solution)
 
     # Check position
-    assert np.allclose(resulting_pos, position, atol=0.1)
+    assert np.allclose(resulting_pos, position, atol=1e-2)
 
     # Near representation singularity (89˚ < |β| < 90°), alpha and gamma are ill-conditioned
     if 89.0 < abs(euler[1]) < 90.0:
