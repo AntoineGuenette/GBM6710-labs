@@ -74,17 +74,10 @@ def sample_xy_slices(z_slices: np.array, num_samples_per_joint: int=10) -> dict:
 
     return slices
 
-def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, savepath: str=None):
+def plot_xz_contour(ax, z_slices: np.array, positions: np.array, alpha: float=0.1):
     """
-    Plot the contour of the reachable region in the XZ plane.
-
-    Parameters:
-        z_slices (np.array): Array of Z slices used for sampling.
-        positions (np.array): Array of attainable wrist flange positions (Nx3).
-        alpha (float): Alpha parameter for alpha shape
-        savepath (str): Directory to save the figure (optional)
+    Plot the contour of the reachable region in the XZ plane on a given Axes.
     """
-    _, ax = plt.subplots()
     z_colors = get_z_slice_colors(z_slices)
 
     # Extract XZ coordinates
@@ -112,52 +105,32 @@ def plot_xz_contour(z_slices: np.array, positions: np.array, alpha: float=0.1, s
     ax.set_title('(A) Région atteignable par la bride\ndu poignet du Meca500 dans le plan XZ')
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Z (mm)')
-    ax.legend(fontsize=8)
 
-    # Save figure if savepath is provided
-    if savepath is not None:
-        file_name = 'meca500_attainable_xz.png'
-        file_path = os.path.join(savepath, file_name)
-        plt.savefig(file_path, dpi=300)
-        print(f"Figure saved to {file_path}")
-    
-def plot_xy_contours(slices: dict, alpha: float=0.01, savepath: str=None):
+def plot_xy_contours(ax, slices: dict, alpha: float=0.01):
     """
-    Plot filled alpha-shape contours for multiple XY slices.
-
-    Parameters:
-        slices (dict): Output of sample_xy_slices function
-        alpha (float): Alpha parameter for alpha shape
-        savepath (str): Directory to save the figure (optional)
+    Plot filled alpha-shape contours for multiple XY slices on a given Axes.
     """
-    _, ax = plt.subplots()
     z_colors = get_z_slice_colors(np.array(list(slices.keys())))
 
     for z, points in slices.items():
-        # Skip slices with insufficient points
         if points.shape[0] < 10:
             continue
 
-        # Extract XY coordinates
         points_xy = points[:, [0, 1]]
 
-        # Remove extreme outliers (robustness)
         r = np.linalg.norm(points_xy, axis=1)
         mask = r < np.percentile(r, 99)
         points_xy = points_xy[mask]
 
-        # Compute alpha shape
         shape = alphashape.alphashape(points_xy, alpha)
         if shape.geom_type == "Polygon":
-            polygons = [shape]
+            poly = shape
         elif shape.geom_type == "MultiPolygon":
-            polygons = [max(shape.geoms, key=lambda p: p.area)]
+            poly = max(shape.geoms, key=lambda p: p.area)
         else:
             continue
-        poly = polygons[0]
-        x, y = poly.exterior.xy
 
-        # Plot contours
+        x, y = poly.exterior.xy
         ax.plot(x, y, color=z_colors[z], linestyle='--', linewidth=2, label=f"z ≈ {int(z)} mm")
         ax.fill(x, y, color='tab:green', alpha=0.25)
 
@@ -165,14 +138,6 @@ def plot_xy_contours(slices: dict, alpha: float=0.01, savepath: str=None):
     ax.set_title("(B) Volume atteignable par la bride\ndu poignet du Meca500")
     ax.set_xlabel("X (mm)")
     ax.set_ylabel("Y (mm)")
-    ax.legend(fontsize=8)
-
-    # Save figure if savepath is provided
-    if savepath is not None:
-        file_name = "meca500_attainable_xy.png"
-        file_path = os.path.join(savepath, file_name)
-        plt.savefig(file_path, dpi=300)
-        print(f"Figure saved to {file_path}")
 
 def get_z_slice_colors(z_slices: np.array, cmap_name: str="plasma") -> dict:
     """
@@ -202,14 +167,29 @@ if __name__ == "__main__":
 
     print("\n --- Meca500 Reachable Volume Sampling ---")
 
-    # XZ plot
+    # Create a single figure with two subplots
+    fig, (ax_xz, ax_xy) = plt.subplots(1, 2, figsize=(12, 5))
+
+    # XZ subplot
     print("\nSampling XZ slice...")
     attainable_xz_positions = sample_xz_slice(num_samples_per_joint=30)
     print("Plotting XZ slice...")
-    plot_xz_contour(z_slices, attainable_xz_positions, alpha=0.1, savepath=figs_path)
+    plot_xz_contour(ax_xz, z_slices, attainable_xz_positions, alpha=0.1)
 
-    # XY plot
+    # XY subplot
     print("\nSampling XY slices...")
     xy_slices = sample_xy_slices(z_slices, num_samples_per_joint=30)
     print("Plotting XY slices...")
-    plot_xy_contours(xy_slices, alpha=0.01, savepath=figs_path)
+    plot_xy_contours(ax_xy, xy_slices, alpha=0.01)
+
+    # Shared legend
+    handles, labels = ax_xz.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=8)
+
+    fig.tight_layout(rect=[0, 0.1, 1, 1])
+
+    # Save figure
+    file_name = "meca500_attainable_volume.png"
+    file_path = os.path.join(figs_path, file_name)
+    plt.savefig(file_path, dpi=300)
+    print(f"\nFigure saved to {file_path}")
