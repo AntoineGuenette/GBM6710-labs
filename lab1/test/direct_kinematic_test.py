@@ -1,10 +1,5 @@
 import numpy as np
 import pytest
-import sys
-import os
-
-# Allow import from src/
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lab1.src.direct_kinematics import direct_kinematics_position
 
