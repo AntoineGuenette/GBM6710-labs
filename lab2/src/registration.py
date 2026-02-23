@@ -10,7 +10,7 @@ def compute_a_tilde(initial_vect: list) -> np.array:
             a_bar += bead
         a_bar = a_bar/len(initial_vect)
         a_tilde = initial_vect - a_bar
-        return a_tilde
+        return a_bar, a_tilde
 
 def compute_b_hat(b_tilde: np.array, Rk: np.array) -> np.array:
      b_hat = np.linalg.inv(Rk) @ b_tilde
@@ -51,8 +51,8 @@ def compute_registration_transform(
     phantom_beads = [bead_1_position_phantom, bead_2_position_phantom, bead_3_position_phantom]
     world_beads = [bead_1_position_world, bead_2_position_world, bead_3_position_world]
 
-    a_tilde, b_tilde = compute_a_tilde(phantom_beads), compute_a_tilde(world_beads)
-
+    a_bar, a_tilde = compute_a_tilde(phantom_beads)
+    b_bar, b_tilde = compute_a_tilde(world_beads)
     # Function to minimize
     def func(euler_angles):
         ax, ay, az = euler_angles
@@ -82,16 +82,24 @@ def compute_registration_transform(
         
         # Apply correction matrix
         R = R @ delta_R
-
         number_itterations += 1
 
-    return R
+    p = b_bar - R @ a_bar
+    T = np.eye(4)
+    T[0:3,0:3] = R
+    T[0:3, -1] = p
+    answer = {"p":p, "R":R, "T": T}
+    return answer
 
 if __name__ == "__main__":
      
     bead_1_position_world = input("Enter the position of bead 1 in world coordinates (mm) as x,y,z: ")
     bead_2_position_world = input("Enter the position of bead 2 in world coordinates (mm) as x,y,z: ")
     bead_3_position_world = input("Enter the position of bead 3 in world coordinates (mm) as x,y,z: ")
+
+    bead_1_position_world = np.array([float(i) for i in bead_1_position_world.split(',')])
+    bead_2_position_world = np.array([float(i) for i in bead_2_position_world.split(',')])
+    bead_3_position_world = np.array([float(i) for i in bead_3_position_world.split(',')])
 
     R = compute_registration_transform(
           bead_1_position_phantom,
