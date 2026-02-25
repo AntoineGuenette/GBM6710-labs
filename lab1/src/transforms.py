@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from meca500_params import *
-from utils import wrap_angle_deg
+from lab1.src.meca500_params import *
+from lab1.src.utils import wrap_angle_deg
 
 def rotmat_x_deg(theta: float) -> np.array:
     """Rotation matrix around x-axis (degrees)."""

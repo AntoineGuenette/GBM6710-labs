@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from meca500_params import *
+from lab1.src.meca500_params import *
 
 def enforce_joint_limits(joint_angles):
     """Enforce joint limits defined in JOINT_LIMITS on the given joint angles."""

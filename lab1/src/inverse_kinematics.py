@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from transforms import numerical_jacobian
-from utils import enforce_joint_limits
+from lab1.src.transforms import numerical_jacobian
+from lab1.src.utils import enforce_joint_limits
 
 def inverse_kinematics(
     x: float,
