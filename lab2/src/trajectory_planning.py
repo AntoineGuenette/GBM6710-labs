@@ -27,7 +27,7 @@ def trajectory_planning(
     """
 
     # Compute the registration transform from phantom to world coordinates
-    reg = compute_registration_transform(
+    T_reg = compute_registration_transform(
         bead_1_position_phantom,
         bead_2_position_phantom,
         bead_3_position_phantom,
@@ -35,9 +35,8 @@ def trajectory_planning(
         bead_2_position_world,
         bead_3_position_world
     )
-
-    R_reg = reg["R"]
-    t_reg = reg["p"]
+    R_reg = T_reg[0:3, 0:3]
+    t_reg = T_reg[0:3, 3]
 
     # Select target and starting points based on the chosen tumor
     if chosen_tumor == "pink":
@@ -58,20 +57,20 @@ def trajectory_planning(
 
     # Compute orientation from trajectory direction
 
-    # Direction from insertion point to tumor
+    # Direction from starting point to insertion point (descending motion)
     direction = target_point_world - starting_point_world
     direction = direction / np.linalg.norm(direction)
 
     # Reference axis
     x_ref = np.array([1.0, 0.0, 0.0])
 
-    # Build tool coordinate frame with z-axis aligned with the direction of the trajectory
-    z_tool = -direction # The tool is pointing DOWNWARD
+    # Build tool coordinate frame with z-axis aligned with trajectory
+    z_tool = direction
     y_tool = np.cross(z_tool, x_ref)
     y_tool = y_tool / np.linalg.norm(y_tool)
     x_tool = np.cross(y_tool, z_tool)
 
-    # Rotation matrix (tool → world)
+    # Rotation matrix (tool -> world)
     R_tool = np.column_stack((x_tool, y_tool, z_tool))
 
     # Convert rotation matrix to Euler angles (alpha, beta, gamma)
@@ -79,21 +78,21 @@ def trajectory_planning(
 
     # Generate instructions for the Meca500 robotic arm to follow the computed trajectory
     instructions = f"""
-    SetTRF(0,0,53.8,0,0,0)
-    SetJointVel(10)
-    SetCartLinVel(10)
-    SetCartAngVel(15)
-    MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
-    Delay(3000)
-    MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
-    Delay(300
-    SetCartLinVel(5)
-    MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
-    Delay(15000)
-    MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
-    SetCartLinVel(10)
-    MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
-    MoveJoints(0,0,0,0,0,0)
+SetTRF(0,0,53.8,0,0,0)
+SetJointVel(10)
+SetCartLinVel(10)
+SetCartAngVel(15)
+MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
+Delay(3)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
+Delay(1)
+SetCartLinVel(5)
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
+Delay(15)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
+SetCartLinVel(10)
+MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{euler_angles[0]:.2f},{euler_angles[1]:.2f},{euler_angles[2]:.2f})
+MoveJoints(0,0,0,0,0,0)
     """
 
     return instructions
@@ -101,27 +100,10 @@ def trajectory_planning(
 
 if __name__ == "__main__":
 
-    chosen_tumor = input("Enter the chosen tumor to target (pink/orange): ")
-
-    bead_1_position_world_x = float(input("Enter the x-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world_y = float(input("Enter the y-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world_z = float(input("Enter the z-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world = np.array([bead_1_position_world_x, bead_1_position_world_y, bead_1_position_world_z], dtype=float)
-
-    bead_2_position_world_x = float(input("Enter the x-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world_y = float(input("Enter the y-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world_z = float(input("Enter the z-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world = np.array([bead_2_position_world_x, bead_2_position_world_y, bead_2_position_world_z], dtype=float)
-
-    bead_3_position_world_x = float(input("Enter the x-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world_y = float(input("Enter the y-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world_z = float(input("Enter the z-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world = np.array([bead_3_position_world_x, bead_3_position_world_y, bead_3_position_world_z], dtype=float)
-
-    chosen_tumor = "pink"
-    bead_1_position_world = np.array([58, 100, 100], dtype=float)
-    bead_2_position_world = np.array([100, 100, 100], dtype=float)
-    bead_3_position_world = np.array([100, 190, 100], dtype=float)
+    chosen_tumor = "orange"
+    bead_1_position_world = np.array([-88.191, 149.478, 54.032], dtype=float)
+    bead_2_position_world = np.array([-65.506, 124.148, 54.167], dtype=float)
+    bead_3_position_world = np.array([-136.058, 53.315, 54.494], dtype=float)
 
     instructions = trajectory_planning(
            chosen_tumor = chosen_tumor,
