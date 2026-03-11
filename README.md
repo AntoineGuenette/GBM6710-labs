@@ -44,7 +44,7 @@ You should see the `lab1`, `lab2` and `lab3` folders.
 ### Step 2 - Setup a Conda environment
 Create a dedicated conda environment named **vwflow**:
 ```bash
-conda create -n gbm6710 python=3.14.12
+conda create -n gbm6710 python=3.12.12
 ```
 Activate the environment:
 ```bash
