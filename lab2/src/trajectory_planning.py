@@ -18,7 +18,7 @@ def trajectory_planning(
     transform.
 
     Parameters:
-        biopsy_mode (str) : The biopsy mode ("touch" or "CMD")
+        biopsy_mode (str): The biopsy mode ("touch" or "CMD")
         chosen_tumor (str): The chosen tumor to target ("pink" or "orange").
         bead_1_position_world (np.array): Position of bead 1 in world coordinates (mm).
         bead_2_position_world (np.array): Position of bead 2 in world coordinates (mm).
@@ -143,7 +143,7 @@ MoveJoints(0,0,0,0,0,0)
 
 if __name__ == "__main__":
 
-    biopsy_mode = "CMD"
+    biopsy_mode = "touch"
     chosen_tumor = "pink"
     bead_1_position_world = np.array([-88.191, 149.478, 54.032], dtype=float)
     bead_2_position_world = np.array([-65.506, 124.148, 54.167], dtype=float)

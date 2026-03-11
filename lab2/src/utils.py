@@ -3,6 +3,21 @@ import numpy as np
 from lab1.src.transforms import rotmat_to_euler_xyz
 
 def euler_from_direction(direction: np.array) -> np.array:
+    """
+    Compute Euler XYZ angles from a direction vector.
+
+    This function constructs a tool coordinate frame whose z-axis is aligned with the given
+    direction vector. The corresponding rotation matrix (tool frame expressed in the world frame) is
+    then converted to Euler angles using the XYZ convention.
+
+    Parameters:
+        direction (np.ndarray): A 3-element vector representing the desired direction of the tool 
+            z-axis in the world coordinate frame. The vector should be normalized.
+
+    Returns:
+        euler_angles (np.ndarray): A 3-element array containing the Euler angles (alpha, beta,
+            gamma) following the XYZ convention, expressed in radians.
+    """
 
     # Reference axis
     x_ref = np.array([1.0, 0.0, 0.0])
