@@ -76,7 +76,7 @@ def numerical_jacobian(joint_angles, p_target, R_target, eps_deg: float = 1e-2):
         e (np.array): Error vector at the current configuration (6,)
     """
     import numpy as np
-    from forward_kinematics import forward_kinematics_T
+    from lab1.src.forward_kinematics import forward_kinematics_T
 
     # Numerical Jacobian Initialization
     J = np.zeros((6, 6))
