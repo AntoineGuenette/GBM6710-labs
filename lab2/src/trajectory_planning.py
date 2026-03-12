@@ -14,8 +14,7 @@ def trajectory_planning(
 ) -> str:
     """
     Compute the trajectory for the Meca500 robotic arm to reach the target tumor from the starting
-    point. The trajectory is computed in joint space using inverse kinematics and a registration
-    transform.
+    point.
 
     Parameters:
         biopsy_mode (str): The biopsy mode ("touch" or "CMD")
@@ -41,7 +40,7 @@ def trajectory_planning(
     R_reg = T_reg[0:3, 0:3]
     t_reg = T_reg[0:3, 3]
 
-    # Select target and starting points based on the chosen tumor
+    # Define the starting, insertion and target points based on the chosen tumor
     if chosen_tumor == "pink":
         starting_point_phantom = pink_starting_point_phantom
         insertion_point_phantom = pink_insertion_point_phantom
@@ -53,12 +52,12 @@ def trajectory_planning(
     else:
         raise ValueError("Invalid tumor choice. Must be 'pink' or 'orange'.")
 
-    # Transform target and starting points to world coordinates
+    # Register those points to world coordinates
     starting_point_world = R_reg @ starting_point_phantom + t_reg
     insertion_point_world = R_reg @ insertion_point_phantom + t_reg
     target_point_world = R_reg @ target_point_phantom + t_reg
 
-    # Compute trajectory direction from starting point to insertion point (descending motion)
+    # Compute trajectory direction from starting point to target point
     direction = target_point_world - starting_point_world
     direction = direction / np.linalg.norm(direction)
 
@@ -108,7 +107,7 @@ MoveJoints(0,0,0,0,0,0)
         CMD_angles_3 = euler_from_direction(CMD_dir_3)
         CMD_angles_4 = euler_from_direction(CMD_dir_4)
 
-        # Update the instruction
+        # Update the instructions
         instructions = f"""
 SetTRF(0,0,53.8,0,0,0)
 SetJointVel(10)
@@ -144,10 +143,11 @@ MoveJoints(0,0,0,0,0,0)
 if __name__ == "__main__":
 
     biopsy_mode = "touch"
-    chosen_tumor = "pink"
-    bead_1_position_world = np.array([-88.191, 149.478, 54.032], dtype=float)
-    bead_2_position_world = np.array([-65.506, 124.148, 54.167], dtype=float)
-    bead_3_position_world = np.array([-136.058, 53.315, 54.494], dtype=float)
+    chosen_tumor = "orange"
+
+    bead_1_position_world = np.array([31.861, 171.536, 54.084], dtype=float)
+    bead_2_position_world = np.array([16.001, 202.145, 53.834], dtype=float)
+    bead_3_position_world = np.array([102.439, 253.157, 54.303], dtype=float)
 
     instructions = trajectory_planning(
         biopsy_mode = biopsy_mode,
@@ -157,6 +157,7 @@ if __name__ == "__main__":
         bead_3_position_world = bead_3_position_world
     )
     print("\nENTERED PARAMETERS:\n")
+    print(f"Chosen Mode: {biopsy_mode}")
     print(f"Chosen Tumor: {chosen_tumor}")
     print(f"Bead 1 Position (World): {bead_1_position_world}")
     print(f"Bead 2 Position (World): {bead_2_position_world}")

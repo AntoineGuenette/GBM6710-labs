@@ -22,7 +22,7 @@ def euler_from_direction(direction: np.array) -> np.array:
     # Reference axis
     x_ref = np.array([1.0, 0.0, 0.0])
 
-    # Build tool coordinate frame with z-axis aligned with trajectory
+    # Build tool coordinate frame with z-axis aligned with desired direction
     z_tool = direction
     y_tool = np.cross(z_tool, x_ref)
     y_tool = y_tool / np.linalg.norm(y_tool)

@@ -1,6 +1,6 @@
 import numpy as np
 
-# All dimensions in mm
+# All dimensions are in mm
 
 starting_distance = 50.0
 

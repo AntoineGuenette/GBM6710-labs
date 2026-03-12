@@ -11,10 +11,8 @@ def compute_registration_transform(
     ) -> np.array:
     """
     Compute the rigid registration transform (rotation and translation) from initial to target
-    coordinates using a closed-form SVD solution.
-
-    If the determinant of the computed rotation matric is not 1, a least squares solution is computed
-    to find the closest valid rotation matrix.
+    coordinates. If the determinant of the computed rotation matric is not 1, a least squares
+    solution is computed to find the closest valid rotation matrix.
 
     Parameters:
         a_1 (np.array): First point in the initial coordinate system (mm).
@@ -47,7 +45,7 @@ def compute_registration_transform(
 
     # Compute rotation matrix
     R = Vt.T @ U.T
-    # If the determinant of R is negative, correct for a reflection
+    # If the determinant of R is negative, multiply the third column of V by -1 to force det(R)>0
     if np.linalg.det(R) < 0:
         Vt[-1, :] *= -1
         R = Vt.T @ U.T
@@ -70,9 +68,6 @@ def compute_registration_transform(
     return T
 
 def optimize_rotation_matrix(A_tilde: np.array, B_tilde: np.array) -> np.array:
-    """
-    Compute the closest valid rotation matrix to a given matrix using least squares optimization.
-    """
     def residuals(r_vec):
         # r_vec is a 9-element vector representing a 3x3 matrix
         R = r_vec.reshape(3, 3)
