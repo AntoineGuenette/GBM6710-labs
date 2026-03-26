@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from meca500_params import *
-from forward_kinematics import forward_kinematics_position
+from lab1.src.meca500_params import *
+from lab1.src.forward_kinematics import forward_kinematics_position
 
 def sample_xz_slice(num_samples_per_joint: int=10) -> np.array:
     """

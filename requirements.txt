@@ -1,0 +1,5 @@
+alphashape
+numpy
+matplotlib
+scipy
+pytest

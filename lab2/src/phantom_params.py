@@ -1,6 +1,6 @@
 import numpy as np
 
-# All dimensions in mm
+# All dimensions are in mm
 
 starting_distance = 50.0
 
@@ -8,7 +8,7 @@ bead_1_position_phantom = np.array([18.99, -133.90, -227.54], dtype=float)
 bead_2_position_phantom = np.array([-13.68, -132.96, -226.15], dtype=float)
 bead_3_position_phantom = np.array([-14.61, -131.08, -124.10], dtype=float)
 
-pink_tumor_position_phantom = np.array([16.66, -108.55, -185.79], dtype=float)
+pink_tumor_position_phantom = np.array([16.66, -109.55, -185.79], dtype=float)
 orange_tumor_position_phantom = np.array([4.53, -106.68, -159.82], dtype=float)
 
 pink_insertion_point_phantom = np.array([16.66, -129.56, -185.79], dtype=float)

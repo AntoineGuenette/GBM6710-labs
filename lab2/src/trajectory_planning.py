@@ -1,9 +1,12 @@
 import numpy as np
 
-from phantom_params import *
-from registration import compute_registration_transform
+from lab2.src.phantom_params import *
+from lab2.src.registration import compute_registration_transform
+from lab2.src.utils import euler_from_direction
+
 
 def trajectory_planning(
+        biopsy_mode : str,
         chosen_tumor: str,
         bead_1_position_world: np.array,
         bead_2_position_world: np.array,
@@ -11,10 +14,10 @@ def trajectory_planning(
 ) -> str:
     """
     Compute the trajectory for the Meca500 robotic arm to reach the target tumor from the starting
-    point. The trajectory is computed in joint space using inverse kinematics and a registration
-    transform.
+    point.
 
     Parameters:
+        biopsy_mode (str): The biopsy mode ("touch" or "CMD")
         chosen_tumor (str): The chosen tumor to target ("pink" or "orange").
         bead_1_position_world (np.array): Position of bead 1 in world coordinates (mm).
         bead_2_position_world (np.array): Position of bead 2 in world coordinates (mm).
@@ -26,18 +29,18 @@ def trajectory_planning(
     """
 
     # Compute the registration transform from phantom to world coordinates
-    R_reg, t_reg = compute_registration_transform(
+    T_reg = compute_registration_transform(
         bead_1_position_phantom,
         bead_2_position_phantom,
         bead_3_position_phantom,
         bead_1_position_world,
         bead_2_position_world,
-        bead_3_position_world,
-        tolerance = 1e-4,
-        max_itteration = 10
+        bead_3_position_world
     )
+    R_reg = T_reg[0:3, 0:3]
+    t_reg = T_reg[0:3, 3]
 
-    # Select target and starting points based on the chosen tumor
+    # Define the starting, insertion and target points based on the chosen tumor
     if chosen_tumor == "pink":
         starting_point_phantom = pink_starting_point_phantom
         insertion_point_phantom = pink_insertion_point_phantom
@@ -49,57 +52,116 @@ def trajectory_planning(
     else:
         raise ValueError("Invalid tumor choice. Must be 'pink' or 'orange'.")
 
-    # Transform target and starting points to world coordinates
+    # Register those points to world coordinates
     starting_point_world = R_reg @ starting_point_phantom + t_reg
     insertion_point_world = R_reg @ insertion_point_phantom + t_reg
     target_point_world = R_reg @ target_point_phantom + t_reg
 
+    # Compute trajectory direction from starting point to target point
+    direction = target_point_world - starting_point_world
+    direction = direction / np.linalg.norm(direction)
+
+    # Compute insertion angle from direction
+    insertion_angles = euler_from_direction(direction)
+    
     # Generate instructions for the Meca500 robotic arm to follow the computed trajectory
-    instructions = f"""
-    SetTRF(0,0,53.8,0,0,0)
-    SetJointVel(10)
-    SetCartLinVel(10)
-    SetCartAngVel(15)
-    MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},0,180,0)
-    Delay(3000)
-    MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},0,180,0)
-    SetCartLinVel(5)
-    MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},0,180,0)
-    Delay(15000)
-    MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},0,180,0)
-    SetCartLinVel(10)
-    MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},0,180,0)
-    MoveJoints(0,0,0,0,0,0)
-    """
+    if biopsy_mode == "touch":
+        instructions = f"""
+SetTRF(0,0,53.8,0,0,0)
+SetJointVel(10)
+SetCartLinVel(10)
+SetCartAngVel(15)
+MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(3)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(1)
+SetCartLinVel(5)
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(15)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+SetCartLinVel(10)
+MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+MoveJoints(0,0,0,0,0,0)
+        """
+    elif biopsy_mode == "CMD":
+        # Define four points in the same world xy plane as the target
+        mvt_length = 2 #mm
+        CMD_point_1 = target_point_world + [mvt_length, 0, 0]
+        CMD_point_2 = target_point_world - [mvt_length, 0, 0]
+        CMD_point_3 = target_point_world + [0, mvt_length, 0]
+        CMD_point_4 = target_point_world - [0, mvt_length, 0]
+
+        # Compute the direction for each point (from insertion point to CMD point)
+        CMD_dir_1 = CMD_point_1 - insertion_point_world 
+        CMD_dir_1 = CMD_dir_1 / np.linalg.norm(CMD_dir_1)
+        CMD_dir_2 = CMD_point_2 - insertion_point_world
+        CMD_dir_2 = CMD_dir_2 / np.linalg.norm(CMD_dir_2)
+        CMD_dir_3 = CMD_point_3 - insertion_point_world
+        CMD_dir_3 = CMD_dir_3 / np.linalg.norm(CMD_dir_3)
+        CMD_dir_4 = CMD_point_4 - insertion_point_world
+        CMD_dir_4 = CMD_dir_4 / np.linalg.norm(CMD_dir_4)
+
+        # Compute the Euler angles for each direction
+        CMD_angles_1 = euler_from_direction(CMD_dir_1)
+        CMD_angles_2 = euler_from_direction(CMD_dir_2)
+        CMD_angles_3 = euler_from_direction(CMD_dir_3)
+        CMD_angles_4 = euler_from_direction(CMD_dir_4)
+
+        # Update the instructions
+        instructions = f"""
+SetTRF(0,0,53.8,0,0,0)
+SetJointVel(10)
+SetCartLinVel(10)
+SetCartAngVel(15)
+MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(3)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(1)
+SetCartLinVel(5)
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(5)
+MoveLin({CMD_point_1[0]:.2f},{CMD_point_1[1]:.2f},{CMD_point_1[2]:.2f},{CMD_angles_1[0]:.2f},{CMD_angles_1[1]:.2f},{CMD_angles_1[2]:.2f})
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+MoveLin({CMD_point_2[0]:.2f},{CMD_point_2[1]:.2f},{CMD_point_2[2]:.2f},{CMD_angles_2[0]:.2f},{CMD_angles_2[1]:.2f},{CMD_angles_2[2]:.2f})
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+MoveLin({CMD_point_3[0]:.2f},{CMD_point_3[1]:.2f},{CMD_point_3[2]:.2f},{CMD_angles_3[0]:.2f},{CMD_angles_3[1]:.2f},{CMD_angles_3[2]:.2f})
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+MoveLin({CMD_point_4[0]:.2f},{CMD_point_4[1]:.2f},{CMD_point_4[2]:.2f},{CMD_angles_4[0]:.2f},{CMD_angles_4[1]:.2f},{CMD_angles_4[2]:.2f})
+MoveLin({target_point_world[0]:.2f},{target_point_world[1]:.2f},{target_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+Delay(5)
+MoveLin({insertion_point_world[0]:.2f},{insertion_point_world[1]:.2f},{insertion_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+SetCartLinVel(10)
+MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{insertion_angles[0]:.2f},{insertion_angles[1]:.2f},{insertion_angles[2]:.2f})
+MoveJoints(0,0,0,0,0,0)
+        """
+    else :
+        raise ValueError("Invalid biopsy mode. Must be 'touch' or 'CMD'.")
 
     return instructions
     
 
 if __name__ == "__main__":
 
-    chosen_tumor = input("Enter the chosen tumor to target (pink/orange): ")
+    biopsy_mode = "touch"
+    chosen_tumor = "orange"
 
-    bead_1_position_world_x = float(input("Enter the x-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world_y = float(input("Enter the y-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world_z = float(input("Enter the z-coordinate of bead 1 in world coordinates (mm): "))
-    bead_1_position_world = np.array([bead_1_position_world_x, bead_1_position_world_y, bead_1_position_world_z], dtype=float)
-
-    bead_2_position_world_x = float(input("Enter the x-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world_y = float(input("Enter the y-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world_z = float(input("Enter the z-coordinate of bead 2 in world coordinates (mm): "))
-    bead_2_position_world = np.array([bead_2_position_world_x, bead_2_position_world_y, bead_2_position_world_z], dtype=float)
-
-    bead_3_position_world_x = float(input("Enter the x-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world_y = float(input("Enter the y-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world_z = float(input("Enter the z-coordinate of bead 3 in world coordinates (mm): "))
-    bead_3_position_world = np.array([bead_3_position_world_x, bead_3_position_world_y, bead_3_position_world_z], dtype=float)
+    bead_1_position_world = np.array([31.861, 171.536, 54.084], dtype=float)
+    bead_2_position_world = np.array([16.001, 202.145, 53.834], dtype=float)
+    bead_3_position_world = np.array([102.439, 253.157, 54.303], dtype=float)
 
     instructions = trajectory_planning(
-           chosen_tumor = chosen_tumor,
-           bead_1_position_world = bead_1_position_world,
-           bead_2_position_world = bead_2_position_world,
-           bead_3_position_world = bead_3_position_world
+        biopsy_mode = biopsy_mode,
+        chosen_tumor = chosen_tumor,
+        bead_1_position_world = bead_1_position_world,
+        bead_2_position_world = bead_2_position_world,
+        bead_3_position_world = bead_3_position_world
     )
+    print("\nENTERED PARAMETERS:\n")
+    print(f"Chosen Mode: {biopsy_mode}")
+    print(f"Chosen Tumor: {chosen_tumor}")
+    print(f"Bead 1 Position (World): {bead_1_position_world}")
+    print(f"Bead 2 Position (World): {bead_2_position_world}")
+    print(f"Bead 3 Position (World): {bead_3_position_world}")
 
-    print("\nINSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n")
+    print("\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:")
     print(instructions)

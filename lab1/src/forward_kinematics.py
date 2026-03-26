@@ -1,7 +1,7 @@
 import numpy as np
 
-from meca500_params import *
-from transforms import rotmat_x_deg, rotmat_z_deg, transform_mat, rotmat_to_euler_xyz
+from lab1.src.meca500_params import *
+from lab1.src.transforms import rotmat_x_deg, rotmat_z_deg, transform_mat, rotmat_to_euler_xyz
 
 def forward_kinematics_T(joint_angles: list) -> np.array:
     """
