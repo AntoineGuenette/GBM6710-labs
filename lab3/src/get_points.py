@@ -1,32 +1,118 @@
 import cv2
+import numpy as np
+import os
 
-def get_points(image):
+def get_points(img_path:str, nb_rows:int=4, nb_cols:int=4) -> np.ndarray:
     points = []
+    point_index = 0
+    instructions = [
+        "Please select the (x_max, y_max) point",
+        "Please select the (x_max, y_min) point",
+        "Please select the (x_min, y_max) point",
+        "Please select the (x_min, y_min) point",
+    ]
+
+    def draw_instruction(img):
+        display = img.copy()
+        if point_index < len(instructions):
+            text = instructions[point_index]
+        elif point_index == len(instructions):
+            text = "All corners have been selected. Please press Enter to see all points."
+        else:
+            text = "Press ESC to quit."
+        cv2.putText(display, text, (45, 45), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.2, (0, 0, 255), 2, cv2.LINE_AA)
+        return display
 
     def mouse_callback(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
+            nonlocal point_index
+            nonlocal image
+            # Add the point
             points.append((x, y))
-            print(f"Point sélectionné: ({x}, {y})")
+            point_index += 1
 
-            # Optionnel: afficher le point sur l'image
+            # Show the point on the image
             cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
-            cv2.imshow("Image", image)
+            cv2.imshow("Image", draw_instruction(image))
+    
+    # Load image
+    image = cv2.imread(img_path)
+    if image is None:
+        raise ValueError(f"Image not found or unreadable: {img_path}")
 
-    cv2.imshow("Image", image)
+    cv2.imshow("Image", draw_instruction(image))
     cv2.setMouseCallback("Image", mouse_callback)
 
-    print("Clique sur l'image (ESC pour terminer)...")
-
+    # Keep image opened until ESC is pressed to escape
     while True:
+        cv2.imshow("Image", draw_instruction(image))
         key = cv2.waitKey(1) & 0xFF
-        if key == 27:  # ESC pour quitter
+        if key == 13 and point_index == len(instructions):  # Enter key
             break
-
+        if key == 27:  # ESC key
+            break
     cv2.destroyAllWindows()
-    return points
+    
+    # Ensure we have exactly 4 corner points
+    if len(points) != 4:
+        raise ValueError("Exactly 4 points must be selected.")
+
+    # Unpack points (order matters based on instructions)
+    (x_max_y_max, x_max_y_min, x_min_y_max, x_min_y_min) = points
+
+    # Convert to numpy for easier interpolation
+    p1 = np.array(x_max_y_max)
+    p2 = np.array(x_max_y_min)
+    p3 = np.array(x_min_y_max)
+    p4 = np.array(x_min_y_min)
+
+    # Create interpolation grid
+    grid = np.zeros((nb_rows, nb_cols, 2), dtype=float)
+
+    for i in range(nb_rows):
+        v = i / (nb_rows - 1) if nb_rows > 1 else 0
+        for j in range(nb_cols):
+            u = j / (nb_cols - 1) if nb_cols > 1 else 0
+
+            # Bilinear interpolation
+            point = (
+                (1 - u) * (1 - v) * p4 +
+                u * (1 - v) * p2 +
+                (1 - u) * v * p3 +
+                u * v * p1
+            )
+
+            grid[i, j] = point
+
+    # Display interpolated grid points (in blue)
+    display_img = image.copy()
+    for i in range(nb_rows):
+        for j in range(nb_cols):
+            x, y = grid[i, j].astype(int)
+            cv2.circle(display_img, (x, y), 3, (255, 120, 0), -1)
+
+    cv2.imshow("Interpolated Grid", display_img)
+    cv2.waitKey(0)
+    cv2.destroyWindow("Interpolated Grid")
+    return grid
 
 if __name__ == "__main__":
-    img = cv2.imread("/Users/antoineguenette/Desktop/Scolaire/Baccalauréat/Programmation/SH26/GBM6710-labs/lab3/images/calib_imgs/imageL.png")
-    pts = get_points(img)
+    # Define paths
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    lab3_dir = os.path.join(script_dir, '..')
+    img_dir = os.path.join(lab3_dir, 'images')
+    img_cam1_path = os.path.join(img_dir, 'calib_imgs', 'imageL.png')
+    img_cam2_path = os.path.join(img_dir, 'calib_imgs', 'imageR.png')
 
-    print("Points sélectionnés :", pts)
+    pts_cam1 = get_points(img_cam1_path)
+    pts_cam2 = get_points(img_cam2_path)
+
+    pts_world = np.array(
+        [ #  (x_max, y_max, 0)                                        (x_max, y_min, 0)
+            [[287.5, 287.5, 0], [287.5, 262.5, 0], [287.5, 237.5, 0], [287.5, 212.5, 0]], 
+            [[262.5, 287.5, 0], [262.5, 262.5, 0], [262.5, 237.5, 0], [262.5, 212.5, 0]],
+            [[237.5, 287.5, 0], [237.5, 262.5, 0], [237.5, 237.5, 0], [237.5, 212.5, 0]],
+            [[212.5, 287.5, 0], [212.5, 262.5, 0], [212.5, 237.5, 0], [212.5, 212.5, 0]],
+        ] #  (x_min, y_max, 0)                                        (x_min, y_min, 0)
+    )
