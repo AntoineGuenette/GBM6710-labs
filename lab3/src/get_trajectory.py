@@ -32,4 +32,12 @@ if __name__ == "__main__":
     # Compute calibration matrices
     calib_mat_cam1 = get_calib_mat(pts_cam1, pts_world)
     calib_mat_cam2 = get_calib_mat(pts_cam2, pts_world)
+
+    # Get camera positions in world coordinates
+
+    # Registration
+
+    # Show augmented images (highlight obstacle and target)
+
+    # Print directions
     
