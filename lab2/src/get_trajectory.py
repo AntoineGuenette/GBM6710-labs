@@ -5,7 +5,7 @@ from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
 
-def trajectory_planning(
+def get_trajectory(
         biopsy_mode : str,
         chosen_tumor: str,
         bead_1_position_world: np.array,
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     bead_2_position_world = np.array([16.001, 202.145, 53.834], dtype=float)
     bead_3_position_world = np.array([102.439, 253.157, 54.303], dtype=float)
 
-    instructions = trajectory_planning(
+    instructions = get_trajectory(
         biopsy_mode = biopsy_mode,
         chosen_tumor = chosen_tumor,
         bead_1_position_world = bead_1_position_world,
