@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 import os
 
-def get_points(img_path:str, nb_rows:int=4, nb_cols:int=4) -> np.ndarray:
+def get_grid_points(img_path:str, nb_rows:int=4, nb_cols:int=4) -> np.ndarray:
     points = []
     point_index = 0
     instructions = [
-        "Please select the (x_max, y_max) point",
-        "Please select the (x_max, y_min) point",
-        "Please select the (x_min, y_max) point",
-        "Please select the (x_min, y_min) point",
+        "Please select the (x_max, y_max) grid point",
+        "Please select the (x_max, y_min) grid point",
+        "Please select the (x_min, y_max) grid point",
+        "Please select the (x_min, y_min) grid point",
     ]
 
     def draw_instruction(img):
@@ -96,3 +96,58 @@ def get_points(img_path:str, nb_rows:int=4, nb_cols:int=4) -> np.ndarray:
     cv2.waitKey(0)
     cv2.destroyWindow("Interpolated Grid")
     return grid
+
+def get_ball_points(img_path:str) -> np.ndarray:
+    points = []
+    point_index = 0
+    instructions = [
+        "Please select the center of the first ball",
+        "Please select the center of the second ball",
+        "Please select the center of the third ball",
+    ]
+
+    def draw_instruction(img):
+        display = img.copy()
+        if point_index < len(instructions):
+            text = instructions[point_index]
+        else :
+            text = "All points have been selected. Please press ESC to quit."
+        cv2.putText(display, text, (45, 45), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.2, (0, 0, 255), 2, cv2.LINE_AA)
+        return display
+
+    def mouse_callback(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            nonlocal point_index
+            nonlocal image
+            # Add the point
+            points.append((x, y))
+            point_index += 1
+
+            # Show the point on the image
+            cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
+            cv2.imshow("Image", draw_instruction(image))
+    
+    # Load image
+    image = cv2.imread(img_path)
+    if image is None:
+        raise ValueError(f"Image not found or unreadable: {img_path}")
+
+    cv2.imshow("Image", draw_instruction(image))
+    cv2.setMouseCallback("Image", mouse_callback)
+
+    # Keep image opened until ESC is pressed to escape
+    while True:
+        cv2.imshow("Image", draw_instruction(image))
+        key = cv2.waitKey(1) & 0xFF
+        if key == 13 and point_index == len(instructions):  # Enter key
+            break
+        if key == 27:  # ESC key
+            break
+    cv2.destroyAllWindows()
+    
+    # Ensure we have exactly 3 points
+    if len(points) != 3:
+        raise ValueError("Exactly 3 points must be selected.")
+
+    return np.array(points)

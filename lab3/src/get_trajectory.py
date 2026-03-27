@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 from lab3.src.phantom_params import *
-from lab3.src.utils import get_points
+from lab3.src.point_selection import get_grid_points, get_ball_points
 from lab3.src.calibration import get_calib_mat
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
@@ -16,8 +16,8 @@ if __name__ == "__main__":
     img_cam2_path = os.path.join(img_dir, 'calib_imgs', 'imageR.png')
 
     # Get camera point
-    pts_cam1 = get_points(img_cam1_path)
-    pts_cam2 = get_points(img_cam2_path)
+    pts_grid_cam1 = get_grid_points(img_cam1_path)
+    pts_grid_cam2 = get_grid_points(img_cam2_path)
 
     # Define world points
     pts_world = np.array(
@@ -30,12 +30,19 @@ if __name__ == "__main__":
     )
 
     # Compute calibration matrices
-    calib_mat_cam1 = get_calib_mat(pts_cam1, pts_world)
-    calib_mat_cam2 = get_calib_mat(pts_cam2, pts_world)
+    calib_mat_cam1 = get_calib_mat(pts_grid_cam1, pts_world)
+    calib_mat_cam2 = get_calib_mat(pts_grid_cam2, pts_world)
+
+    # Get ball points
+    pts_ball_cam1 = get_ball_points(img_cam1_path)
+    pts_ball_cam2 = get_ball_points(img_cam2_path)
 
     # Get camera positions in world coordinates
+    
 
     # Registration
+        # get_phantom_points
+        # compute_registration_transform
 
     # Show augmented images (highlight obstacle and target)
 
