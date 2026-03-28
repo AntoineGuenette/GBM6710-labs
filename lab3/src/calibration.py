@@ -79,3 +79,7 @@ def get_camera_center(U: np.ndarray,
     C = np.linalg.solve(A, b)
 
     return C
+
+def triangulate_points():
+    # to be implemented
+    pass

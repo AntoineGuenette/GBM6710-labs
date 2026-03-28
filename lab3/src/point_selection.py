@@ -151,3 +151,7 @@ def get_ball_points(img_path:str) -> np.ndarray:
         raise ValueError("Exactly 3 points must be selected.")
 
     return np.array(points)
+
+def get_phantom_points(img_path:str) -> np.ndarray:
+    # To be implemented
+    pass
