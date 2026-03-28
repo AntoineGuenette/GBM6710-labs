@@ -5,9 +5,21 @@ from lab3.src.phantom_params import *
 from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
 from lab3.src.calibration import get_calib_mat, get_camera_center, triangulate_points
 from lab2.src.registration import compute_registration_transform
-from lab2.src.utils import euler_from_direction
 
-if __name__ == "__main__":
+def get_trajectory() -> str:
+    """
+    Compute the trajectory of the system using stereo calibration, triangulation and
+    registration in order to estimate the position of the phantom and relevant points
+    in world coordinates.
+
+    Parameters:
+        None
+
+    Returns:
+        instructions (str): A string containing the instructions for the Meca500 robotic arm to
+        follow the computed trajectory.
+    """
+
     # Define paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
     lab3_dir = os.path.join(script_dir, '..')
@@ -75,4 +87,10 @@ if __name__ == "__main__":
     # Show augmented images (highlight obstacle and target)
 
     # Print directions
+    instructions = ""
+
+    return instructions
+
+if __name__ == "__main__":
+    get_trajectory()
     
