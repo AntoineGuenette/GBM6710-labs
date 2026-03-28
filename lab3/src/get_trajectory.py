@@ -8,9 +8,8 @@ from lab2.src.registration import compute_registration_transform
 
 def get_trajectory() -> str:
     """
-    Compute the trajectory of the system using stereo calibration, triangulation and
-    registration in order to estimate the position of the phantom and relevant points
-    in world coordinates.
+    Compute the trajectory of the system using stereo calibration, triangulation and registration
+    in order to estimate the position of the phantom and relevant points in world coordinates.
 
     Parameters:
         None
