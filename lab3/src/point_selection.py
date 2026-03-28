@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 
-def get_grid_points(img_path:str, nb_rows:int=4, nb_cols:int=4) -> np.ndarray:
+def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
     points = []
     point_index = 0
     instructions = [
@@ -101,9 +101,9 @@ def get_ball_points(img_path:str) -> np.ndarray:
     points = []
     point_index = 0
     instructions = [
-        "Please select the center of the first ball",
-        "Please select the center of the second ball",
-        "Please select the center of the third ball",
+        "Please select the center of the (x_max, y_max) ball",
+        "Please select the center of the (x_max, y_min) ball",
+        "Please select the center of the (x_min, y_max) ball",
     ]
 
     def draw_instruction(img):
