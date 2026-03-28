@@ -3,7 +3,7 @@ import os
 
 from lab3.src.phantom_params import *
 from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
-from lab3.src.calibration import get_calib_mat, get_camera_center, triangulate_points
+from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points
 from lab2.src.registration import compute_registration_transform
 
 def get_trajectory() -> str:
