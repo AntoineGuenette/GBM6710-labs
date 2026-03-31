@@ -26,8 +26,8 @@ def get_trajectory() -> str:
     img_dir = os.path.join(lab3_dir, 'images')
     calib_img_cam1_path = os.path.join(img_dir, 'ex_imgs', 'AimgLb.png')
     calib_img_cam2_path = os.path.join(img_dir, 'ex_imgs', 'AimgRb.png')
-    img_cam1_path = os.path.join(img_dir, 'ex_imgs', 'AimgLb.png')
-    img_cam2_path = os.path.join(img_dir, 'ex_imgs', 'AimgRb.png')
+    img_cam1_path = os.path.join(img_dir, 'ex_imgs', 'AimgLc.png')
+    img_cam2_path = os.path.join(img_dir, 'ex_imgs', 'AimgRc.png')
 
     # Get camera point
     pts_grid_cam1 = get_grid_points(calib_img_cam1_path)
