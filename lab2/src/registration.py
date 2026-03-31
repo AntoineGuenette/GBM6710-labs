@@ -2,34 +2,34 @@ import numpy as np
 from scipy.optimize import least_squares
 
 def compute_registration_transform(
-        a_1: np.array,
-        a_2: np.array, 
-        a_3: np.array, 
-        b_1: np.array, 
-        b_2: np.array, 
-        b_3: np.array,
+        A: np.array,
+        B: np.array,
     ) -> np.array:
     """
     Compute the rigid registration transform (rotation and translation) from initial to target
-    coordinates. If the determinant of the computed rotation matric is not 1, a least squares
-    solution is computed to find the closest valid rotation matrix.
+    coordinates using a variable number of corresponding points. If the determinant of the computed
+    rotation matrix is not 1, a least squares solution is computed to find the closest valid
+    rotation matrix.
 
     Parameters:
-        a_1 (np.array): First point in the initial coordinate system (mm).
-        a_2 (np.array): Second point in the initial coordinate system (mm).
-        a_3 (np.array): Third point in the initial coordinate system (mm).
-        b_1 (np.array): First point in the target coordinate system (mm).
-        b_2 (np.array): Second point in the target coordinate system (mm).
-        b_3 (np.array): Third point in the target coordinate system (mm).
+        A (np.array): Array of shape (N, 3) containing points in the initial coordinate system (mm).
+        B (np.array): Array of shape (N, 3) containing corresponding points in the target coordinate
+            system (mm).
 
     Returns:
         T (np.array): A 4x4 homogeneous transformation matrix representing the rigid registration
         from the initial to the target coordinate system.
     """
 
-    # Construct matrices A and B from the coordinates of the points
-    A = np.stack([a_1, a_2, a_3], axis=1)
-    B = np.stack([b_1, b_2, b_3], axis=1)
+    # Validate inputs
+    if A.shape != B.shape:
+        raise ValueError("A and B must have the same shape.")
+    if A.shape[1] != 3:
+        raise ValueError("Input point arrays must have shape (N, 3).")
+
+    # Transpose to shape (3, N) for computation
+    A = A.T
+    B = B.T
 
     # Compute centroids
     a_bar = np.mean(A, axis=1, keepdims=True)

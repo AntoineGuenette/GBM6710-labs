@@ -68,16 +68,13 @@ def get_trajectory() -> str:
     pts_phantom_cam2 = get_phantom_points(img_cam2_path)
 
     # Triangulate the points to get phantom points in world coordinates
-    pts_world = triangulate_points(C_cam1, pts_phantom_cam1, C_cam2, pts_phantom_cam2)
+    box_corners_world = triangulate_points(C_cam1, pts_phantom_cam1, C_cam2, pts_phantom_cam2)
 
     # Compute the registration transform from phantom to world coordinates
+    box_corners_phantom = np.array([box_back_right_phantom, box_back_left_phantom, box_front_right_phantom, box_front_left_phantom])
     T_reg = compute_registration_transform(
-        a_1 = box_back_right_phantom,
-        a_2 = box_front_right_phantom,
-        a_3 = box_front_left_phantom,
-        b_1 = pts_world[0],
-        b_2 = pts_world[2],
-        b_3 = pts_world[3]
+        A = box_corners_phantom,
+        B = box_corners_world
     )
     R_reg = T_reg[0:3, 0:3]
     t_reg = T_reg[0:3, 3]

@@ -29,13 +29,11 @@ def get_trajectory(
     """
 
     # Compute the registration transform from phantom to world coordinates
+    bead_positions_phantom = np.array([bead_1_position_phantom, bead_2_position_phantom, bead_3_position_phantom])
+    bead_positions_world = np.array([bead_1_position_world, bead_2_position_world, bead_3_position_world])
     T_reg = compute_registration_transform(
-        bead_1_position_phantom,
-        bead_2_position_phantom,
-        bead_3_position_phantom,
-        bead_1_position_world,
-        bead_2_position_world,
-        bead_3_position_world
+        A = bead_positions_phantom,
+        B = bead_positions_world
     )
     R_reg = T_reg[0:3, 0:3]
     t_reg = T_reg[0:3, 3]
