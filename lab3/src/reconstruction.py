@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial import KDTree
 
 def grid_to_vec(points):
     """
@@ -102,15 +103,52 @@ def get_camera_center(U: np.ndarray,
 
     return C
 
-def triangulate_points():
+def triangulate_points(pts_ball_cam1, pts_ball_cam2, C1, C2, calib_mat1, calib_mat2):
     """
     Triangulate 3D points from corresponding 2D points in multiple camera views.
 
     Parameters:
-        None
-
+        pts_ball_cam1: points of balls in cam 1 images
+        pts_ball_cam2: points of balls in cam 2 images
+        C1: center of camera 1
+        C2: center of camera 2
+        calib_mat1: calibration matrix of cam 1
+        calib_mat2: calibration matrix of cam 2
     Returns:
         None
     """
-    # to be implemented
-    pass
+    points_3d = []
+    for i in range(len(pts_ball_cam1)):
+        p1 = pts_ball_cam1[i]
+        p2 = pts_ball_cam2[i]
+
+        def project_to_world_plane(calib_mat:np.ndarray, point: tuple):
+            m,n = point
+            [Ax, Bx, Cx, Dx, Ex, Fx] = calib_mat[:,0]
+            [Ay, By, Cy, Dy, Ey, Fy] = calib_mat[:,1]
+            x = Ax * m ** 2 + Bx * m * n + Cx * n ** 2 + Dx * m + Ex * n + Fx
+            y = Ay * m ** 2 + By * m * n + Cy * n ** 2 + Dy * m + Ey * n + Fy
+            return np.array([x,y,150.0])
+        
+        P1 = project_to_world_plane(calib_mat1,p1)
+        P2 = project_to_world_plane(calib_mat2,p2)
+
+
+        d1 = np.array(C1 - P1) 
+        d1 = d1/np.linalg.norm(d1)
+
+        d2 = np.array(C1 - P2) 
+        d2 = d2/np.linalg.norm(d2)
+
+        # 3. Résolution du point le plus proche entre deux droites (SVD ou moindres carrés)
+        # On cherche à minimiser la distance entre C1 + t1*d1 et C2 + t2*d2
+        # Système: t1*d1 - t2*d2 = C2 - C1
+        A = np.array([d1, -d2]).T
+        b = C2 - C1
+
+        t, residuals, rank, s = np.linalg.lstsq(A,b, rcond = None)
+        point_3d = ((C1 + t[0] * d1)) + ((C2 + t[1] * d2))/2
+        points_3d.append(point_3d)
+
+
+    return np.array(points_3d)

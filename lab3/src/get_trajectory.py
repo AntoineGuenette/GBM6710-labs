@@ -1,9 +1,17 @@
 import numpy as np
 import os
+import sys
 
-from lab3.src.phantom_params import *
-from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
-from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points
+# Calcule le chemin vers la racine du projet (deux niveaux au-dessus de src)
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+# Ajoute ce chemin au système pour que Python voie le dossier 'lab2'
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
+
+from phantom_params import *
+from point_selection import get_grid_points, get_ball_points, get_phantom_points
+from reconstruction import get_calib_mat, get_camera_center, triangulate_points
 from lab2.src.registration import compute_registration_transform
 
 def get_trajectory() -> str:
@@ -57,6 +65,7 @@ def get_trajectory() -> str:
     # Get camera positions in world coordinates
     C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world)
     C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world)
+
     print("Camera 1:", C_cam1)
     print("Camera 2:", C_cam2)
 
@@ -64,8 +73,10 @@ def get_trajectory() -> str:
     pts_phantom_cam1 = get_phantom_points(img_cam1_path)
     pts_phantom_cam2 = get_phantom_points(img_cam2_path)
 
+
     # Triangulate the points to get phantom points in world coordinates
-    pts_world = triangulate_points()
+    pts_world = triangulate_points(pts_ball_cam1, pts_ball_cam2, C_cam1, C_cam2, calib_mat_cam1, calib_mat_cam2)
+    print(f"Points triangulation: {pts_world}")
 
     # Compute the registration transform from phantom to world coordinates
     T_reg = compute_registration_transform(
