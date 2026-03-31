@@ -153,5 +153,57 @@ def get_ball_points(img_path:str) -> np.ndarray:
     return np.array(points)
 
 def get_phantom_points(img_path:str) -> np.ndarray:
-    # To be implemented
-    pass
+    points = []
+    point_index = 0
+    instructions = [
+        "Please select the top back right corner",
+        "Please select the top back left corner",
+        "Please select the top front right corner",
+        "Please select the top front left corner",
+    ]
+
+    def draw_instruction(img):
+        display = img.copy()
+        if point_index < len(instructions):
+            text = instructions[point_index]
+        else :
+            text = "All points have been selected. Please press ESC to quit."
+        cv2.putText(display, text, (45, 45), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.2, (0, 0, 255), 2, cv2.LINE_AA)
+        return display
+
+    def mouse_callback(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            nonlocal point_index
+            nonlocal image
+            # Add the point
+            points.append((x, y))
+            point_index += 1
+
+            # Show the point on the image
+            cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
+            cv2.imshow("Image", draw_instruction(image))
+    
+    # Load image
+    image = cv2.imread(img_path)
+    if image is None:
+        raise ValueError(f"Image not found or unreadable: {img_path}")
+
+    cv2.imshow("Image", draw_instruction(image))
+    cv2.setMouseCallback("Image", mouse_callback)
+
+    # Keep image opened until ESC is pressed to escape
+    while True:
+        cv2.imshow("Image", draw_instruction(image))
+        key = cv2.waitKey(1) & 0xFF
+        if key == 13 and point_index == len(instructions):  # Enter key
+            break
+        if key == 27:  # ESC key
+            break
+    cv2.destroyAllWindows()
+    
+    # Ensure we have exactly 4 points
+    if len(points) != 4:
+        raise ValueError("Exactly 4 points must be selected.")
+
+    return np.array(points)
