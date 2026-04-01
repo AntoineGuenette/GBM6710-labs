@@ -1,17 +1,9 @@
 import numpy as np
 import os
-import sys
 
-# Calcule le chemin vers la racine du projet (deux niveaux au-dessus de src)
-root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-
-# Ajoute ce chemin au système pour que Python voie le dossier 'lab2'
-if root_path not in sys.path:
-    sys.path.insert(0, root_path)
-
-from phantom_params import *
-from point_selection import get_grid_points, get_ball_points, get_phantom_points
-from reconstruction import get_calib_mat, get_camera_center, triangulate_points
+from lab3.src.phantom_params import *
+from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
+from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
@@ -32,10 +24,10 @@ def get_trajectory() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     lab3_dir = os.path.join(script_dir, '..')
     img_dir = os.path.join(lab3_dir, 'images')
-    calib_img_cam1_path = os.path.join(img_dir, 'ex_imgs', 'AimgLb.png')
-    calib_img_cam2_path = os.path.join(img_dir, 'ex_imgs', 'AimgRb.png')
-    img_cam1_path = os.path.join(img_dir, 'ex_imgs', 'AimgLc.png')
-    img_cam2_path = os.path.join(img_dir, 'ex_imgs', 'AimgRc.png')
+    calib_img_cam1_path = os.path.join(img_dir, 'imgs', 'calib_cam1.jpg')
+    calib_img_cam2_path = os.path.join(img_dir, 'imgs', 'calib_cam2.jpg')
+    img_cam1_path = os.path.join(img_dir, 'imgs', 'cam1.jpg')
+    img_cam2_path = os.path.join(img_dir, 'imgs', 'cam2.jpg')
 
     # Get camera point
     pts_grid_cam1 = get_grid_points(calib_img_cam1_path)
@@ -52,9 +44,9 @@ def get_trajectory() -> str:
         ] #  (x_min, y_max, 0.0)                                                                 (x_min, y_min, 0.0)
     )
     pts_ball_world = np.array( # Change whith real calib data (chosen positions)
-        [[212.5, 212.5, 150.0], # (x_max, y_max, 150.0)
-         [212.5, 87.5, 150.0], # (x_max, y_min, 150.0)
-         [87.5, 212.5, 150.0]] # (x_min, y_max, 150.0)
+        [[262.5, 262.5, 150.0], # (x_max, y_max, 150.0)
+         [262.5, 37.5, 150.0], # (x_max, y_min, 150.0)
+         [37.5, 262.5, 150.0]] # (x_min, y_max, 150.0)
     )
 
     # Compute calibration matrices
@@ -69,19 +61,24 @@ def get_trajectory() -> str:
     C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world)
     C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world)
 
-    print("Camera 1:", C_cam1)
-    print("Camera 2:", C_cam2)
+    print("\nCAMERA COORDINATES:")
+    print(f"Camera 1: {C_cam1}")
+    print(f"Camera 2: {C_cam2}\n")
 
     # Get phantom points in cam coordinates
     pts_phantom_cam1 = get_phantom_points(img_cam1_path)
     pts_phantom_cam2 = get_phantom_points(img_cam2_path)
 
-
     # Triangulate the points to get phantom points in world coordinates
-    pts_world = triangulate_points(pts_ball_cam1, pts_ball_cam2, C_cam1, C_cam2, calib_mat_cam1, calib_mat_cam2)
-    print(f"Points triangulation: {pts_world}")
-    box_corners_world = triangulate_points(C_cam1, pts_phantom_cam1, C_cam2, pts_phantom_cam2)
-
+    box_corners_world = triangulate_points(
+        pts_phantom_cam1,
+        pts_phantom_cam2,
+        C_cam1,
+        C_cam2,
+        calib_mat_cam1,
+        calib_mat_cam2
+    )
+    print(f"TRIANGULATED POINTS:\n{box_corners_world}")
 
     # Compute the registration transform from phantom to world coordinates
     box_corners_phantom = np.array([box_back_right_phantom, box_back_left_phantom, box_front_right_phantom, box_front_left_phantom])
@@ -141,5 +138,7 @@ MoveJoints(0,0,0,0,0,0)
     return instructions
 
 if __name__ == "__main__":
-    get_trajectory()
+    instructions = get_trajectory()
+
+    print(f"\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n{instructions}")
     

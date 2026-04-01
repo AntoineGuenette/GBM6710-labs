@@ -53,102 +53,88 @@ def get_calib_mat(camera_points: np.ndarray, world_points: np.ndarray) -> np.nda
 
     return U
 
-def get_camera_center(U: np.ndarray,
-                      ball_img_pts: np.ndarray,
-                      ball_world_pts: np.ndarray) -> np.ndarray:
+def get_camera_center(U, ball_img_pts, ball_world_pts):
     """
-    Estimate the camera center using image points and corresponding 3D world points by intersecting
-    projection rays in a least-squares sense.
-
-    Parameters:
-        U (np.ndarray): Calibration matrix obtained from planar calibration.
-        ball_img_pts (np.ndarray): Array of shape (N, 2) containing 2D image coordinates (u, v).
-        ball_world_pts (np.ndarray): Array of shape (N, 3) containing corresponding 3D world
-        coordinates (X, Y, Z).
-
-    Returns:
-        C (np.ndarray): Estimated camera center in world coordinates (shape: (3,)).
+    Estimate camera center: C is the point such that for each ball,
+    the ray from C through P_plane (backprojected image point on Z=0)
+    passes through Pw (3D world position of the ball).
+    
+    Constraint: C, P_plane, Pw are collinear
+    => (Pw - C) × (P_plane - C) = 0
+    Which linearizes to solving a least-squares system.
     """
+    
+    def backproject(U, pt):
+        m, n = pt
+        Ax, Bx, Cx, Dx, Ex, Fx = U[:, 0]
+        Ay, By, Cy, Dy, Ey, Fy = U[:, 1]
+        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+        return np.array([x, y, 0.0])
 
-    # Convert inputs to numpy arrays (safety)
-    ball_img_pts = np.asarray(ball_img_pts)
-    ball_world_pts = np.asarray(ball_world_pts)
-
-    rays = []
-    points = []
-
-    # Build rays from image points (pinhole approximation)
-    for (u, v), Pw in zip(ball_img_pts, ball_world_pts):
-        # Direction vector in camera frame
-        d = np.array([u, v, 1.0])
-        d = d / np.linalg.norm(d)
-
-        rays.append(d)
-        points.append(Pw)
-
-    rays = np.array(rays)
-    points = np.array(points)
-
-    # Solve least squares intersection of rays
     A = np.zeros((3, 3))
     b = np.zeros(3)
 
-    for d, p in zip(rays, points):
+    for (u, v), Pw in zip(ball_img_pts, ball_world_pts):
+        P_plane = backproject(U, (u, v))
+        
+        # Direction: de P_plane vers Pw (connue sans C)
+        d = Pw - P_plane
+        d = d / np.linalg.norm(d)
+
+        # Contrainte: C est sur la droite passant par Pw de direction d
+        # => minimiser ||(I - d dᵀ)(C - Pw)||²
         I = np.eye(3)
-        A += I - np.outer(d, d)
-        b += (I - np.outer(d, d)) @ p
+        M = I - np.outer(d, d)
+        A += M
+        b += M @ Pw  # = M @ Pw car M @ Pw est le terme constant
 
-    # Solve system
     C = np.linalg.solve(A, b)
-
     return C
 
-def triangulate_points(pts_ball_cam1, pts_ball_cam2, C1, C2, calib_mat1, calib_mat2):
+def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
     """
-    Triangulate 3D points from corresponding 2D points in multiple camera views.
+    Triangulate 3D points from corresponding 2D image points.
+    """
 
-    Parameters:
-        pts_ball_cam1: points of balls in cam 1 images
-        pts_ball_cam2: points of balls in cam 2 images
-        C1: center of camera 1
-        C2: center of camera 2
-        calib_mat1: calibration matrix of cam 1
-        calib_mat2: calibration matrix of cam 2
-    Returns:
-        None
-    """
+    def backproject(calib_mat, pt):
+        """
+        Convert image point to a direction vector in world space.
+        """
+        m, n = pt
+
+        Ax, Bx, Cx, Dx, Ex, Fx = calib_mat[:, 0]
+        Ay, By, Cy, Dy, Ey, Fy = calib_mat[:, 1]
+
+        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+
+        # direction from camera toward projected point on plane
+        dir_vec = np.array([x, y, 0.0])  # plan Z=0 (cohérent calibration)
+        return dir_vec
+
     points_3d = []
-    for i in range(len(pts_ball_cam1)):
-        p1 = pts_ball_cam1[i]
-        p2 = pts_ball_cam2[i]
 
-        def project_to_world_plane(calib_mat:np.ndarray, point: tuple):
-            m,n = point
-            [Ax, Bx, Cx, Dx, Ex, Fx] = calib_mat[:,0]
-            [Ay, By, Cy, Dy, Ey, Fy] = calib_mat[:,1]
-            x = Ax * m ** 2 + Bx * m * n + Cx * n ** 2 + Dx * m + Ex * n + Fx
-            y = Ay * m ** 2 + By * m * n + Cy * n ** 2 + Dy * m + Ey * n + Fy
-            return np.array([x,y,150.0])
-        
-        P1 = project_to_world_plane(calib_mat1,p1)
-        P2 = project_to_world_plane(calib_mat2,p2)
+    for p1, p2 in zip(pts1, pts2):
 
+        # Directions
+        d1 = backproject(calib_mat1, p1) - C1
+        d2 = backproject(calib_mat2, p2) - C2
 
-        d1 = np.array(C1 - P1) 
-        d1 = d1/np.linalg.norm(d1)
+        d1 /= np.linalg.norm(d1)
+        d2 /= np.linalg.norm(d2)
 
-        d2 = np.array(C1 - P2) 
-        d2 = d2/np.linalg.norm(d2)
-
-        # 3. Résolution du point le plus proche entre deux droites (SVD ou moindres carrés)
-        # On cherche à minimiser la distance entre C1 + t1*d1 et C2 + t2*d2
-        # Système: t1*d1 - t2*d2 = C2 - C1
-        A = np.array([d1, -d2]).T
+        # Solve closest points between rays
+        A = np.stack([d1, -d2], axis=1)
         b = C2 - C1
 
-        t, residuals, rank, s = np.linalg.lstsq(A,b, rcond = None)
-        point_3d = ((C1 + t[0] * d1)) + ((C2 + t[1] * d2))/2
-        points_3d.append(point_3d)
+        t, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
 
+        P1 = C1 + t[0] * d1
+        P2 = C2 + t[1] * d2
+
+        # midpoint
+        P = (P1 + P2) / 2
+        points_3d.append(P)
 
     return np.array(points_3d)
