@@ -63,8 +63,8 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
 
     # Convert to numpy for easier interpolation
     p1 = np.array(x_max_y_max)
-    p2 = np.array(x_max_y_min)
-    p3 = np.array(x_min_y_max)
+    p2 = np.array(x_min_y_max)
+    p3 = np.array(x_max_y_min)
     p4 = np.array(x_min_y_min)
 
     # Create interpolation grid
@@ -75,24 +75,32 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
         for j in range(nb_cols):
             u = j / (nb_cols - 1) if nb_cols > 1 else 0
 
-            # Bilinear interpolation
             point = (
-                (1 - u) * (1 - v) * p4 +
-                u * (1 - v) * p2 +
-                (1 - u) * v * p3 +
-                u * v * p1
+                (1 - u) * (1 - v) * p1 +
+                (1 - u) * v * p2 +
+                u * (1 - v) * p3 +
+                u * v * p4
             )
 
             grid[i, j] = point
 
-    # Display interpolated grid points (in blue)
+    # Display interpolated grid points row by row
     display_img = image.copy()
+
     for i in range(nb_rows):
         for j in range(nb_cols):
             x, y = grid[i, j].astype(int)
             cv2.circle(display_img, (x, y), 3, (255, 120, 0), -1)
+            cv2.imshow("Interpolated Grid", display_img)
 
-    cv2.imshow("Interpolated Grid", display_img)
+            key = cv2.waitKey(25) & 0xFF
+            if key == 27:
+                break
+        else:
+            continue
+        break
+
+    # Final pause at the end
     cv2.waitKey(0)
     cv2.destroyWindow("Interpolated Grid")
     return grid
