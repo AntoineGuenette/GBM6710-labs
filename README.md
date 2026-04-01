@@ -98,23 +98,24 @@ This script samples the robot configuration space to estimate the reachable work
 Run the trajectory planning simulation:
 
 ```bash
-python -m lab2.src.trajectory_planning
+python -m lab2.src.get_trajectory
 ```
-
-This module computes a feasible biopsy needle trajectory based on:
-
-- The selected biopsy mode
-- Tumor position
-- Calibration coordinates
 
 >[!Warning]
 > Make sure the biopsy mode, tumor coordinates, and calibration parameters are updated in the script before launching the program.
 
 ---
 
-### Lab 3 : (to be implemented)
+### Lab 3 : Camera guided trajectory
 
-Commands for Lab 3 will be added once the laboratory exercises are released.
+Run the trajectory planning simulation:
+
+```bash
+python -m lab3.src.get_trajectory
+```
+
+>[!Warning]
+> Make sure that the images in `lab3/images/imgs` are the latest ones.
 
 ---
 
