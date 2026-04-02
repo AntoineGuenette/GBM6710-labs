@@ -138,3 +138,64 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
         points_3d.append(P)
 
     return np.array(points_3d)
+
+def project_points(world_points, C, calib_mat):
+    """
+    Project 3D world points into image coordinates (u, v).
+
+    Parameters:
+        world_points (np.ndarray): Array of shape (N, 3) of 3D world points.
+        C (np.ndarray): Camera center of shape (3,).
+        calib_mat (np.ndarray): Calibration matrix (6x2).
+
+    Returns:
+        img_points (np.ndarray): Array of shape (N, 2) of image coordinates (u, v).
+    """
+
+    def forward_model(m, n, U):
+        Ax, Bx, Cx, Dx, Ex, Fx = U[:, 0]
+        Ay, By, Cy, Dy, Ey, Fy = U[:, 1]
+
+        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+
+        return np.array([x, y, 0.0])
+
+    img_points = []
+
+    for Pw in world_points:
+        # Direction from camera to point
+        d = Pw - C
+        d = d / np.linalg.norm(d)
+
+        # We find (m, n) such that forward_model(m,n) lies on this ray
+        # Solve via nonlinear least squares (simple iterative search)
+
+        def residual(p):
+            m, n = p
+            P_plane = forward_model(m, n, calib_mat)
+            ray_dir = P_plane - C
+            ray_dir = ray_dir / np.linalg.norm(ray_dir)
+            return ray_dir - d
+
+        # Initial guess
+        p = np.array([0.0, 0.0])
+
+        # Simple Gauss-Newton iterations
+        for _ in range(20):
+            eps = 1e-6
+            r = residual(p)
+
+            J = np.zeros((3, 2))
+            for i in range(2):
+                dp = np.zeros(2)
+                dp[i] = eps
+                J[:, i] = (residual(p + dp) - r) / eps
+
+            # Solve J * delta = -r
+            delta, _, _, _ = np.linalg.lstsq(J, -r, rcond=None)
+            p += delta
+
+        img_points.append(p)
+
+    return np.array(img_points)

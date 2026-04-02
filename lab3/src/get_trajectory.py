@@ -1,9 +1,10 @@
 import numpy as np
 import os
+import cv2
 
 from lab3.src.phantom_params import *
 from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
-from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points
+from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points, project_points
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
@@ -137,7 +138,7 @@ def get_trajectory() -> str:
         safe_rot = 0  # fallback
     else:
         t_min, axis, coord = min(t_candidates, key=lambda x: x[0])
-        
+
         if axis == 'x':  # crossed y = 0 → X axis
             if coord >= 0:
                 safe_rot = 0      # +X
@@ -149,7 +150,52 @@ def get_trajectory() -> str:
             else:
                 safe_rot = -90    # -Y
     
-    # Show augmented images (highlight obstacle and target)
+
+    # Find the obstacle corners in each camera coordinates
+    obs_world = np.array([
+        obs_top_right_world,
+        obs_top_left_world,
+        obs_bottom_right_world,
+        obs_bottom_left_world
+    ])
+    obs_img_cam1 = project_points(obs_world, C_cam1, calib_mat_cam1)
+    obs_img_cam2 = project_points(obs_world, C_cam2, calib_mat_cam2)
+
+    # Find the target corners in each camera coordinates
+    trg_world = np.array([
+        trg_top_right_world,
+        trg_top_left_world,
+        trg_bottom_right_world,
+        trg_bottom_left_world
+    ])
+    trg_img_cam1 = project_points(trg_world, C_cam1, calib_mat_cam1)
+    trg_img_cam2 = project_points(trg_world, C_cam2, calib_mat_cam2)
+
+    # Show augmented images (highlight obstacle and target with filled polygons)
+    img_cam1 = cv2.imread(img_cam1_path, cv2.IMREAD_GRAYSCALE)
+    img_cam2 = cv2.imread(img_cam2_path, cv2.IMREAD_GRAYSCALE)
+
+    # Convert grayscale to BGR so we can overlay colors
+    img_cam1 = cv2.cvtColor(img_cam1, cv2.COLOR_GRAY2BGR)
+    img_cam2 = cv2.cvtColor(img_cam2, cv2.COLOR_GRAY2BGR)
+
+    obs_cam1_int = obs_img_cam1.astype(int)
+    trg_cam1_int = trg_img_cam1.astype(int)
+    obs_cam2_int = obs_img_cam2.astype(int)
+    trg_cam2_int = trg_img_cam2.astype(int)
+
+    # Draw colored polygons on grayscale background
+    cv2.fillPoly(img_cam1, [obs_cam1_int], (0, 0, 255))  # obstacle = red
+    cv2.fillPoly(img_cam1, [trg_cam1_int], (0, 255, 0))  # target = green
+
+    cv2.fillPoly(img_cam2, [obs_cam2_int], (0, 0, 255))
+    cv2.fillPoly(img_cam2, [trg_cam2_int], (0, 255, 0))
+
+    cv2.imshow("Camera 1", img_cam1)
+    cv2.waitKey(50)
+    cv2.imshow("Camera 2", img_cam2)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # Print directions
     instructions = f"""
