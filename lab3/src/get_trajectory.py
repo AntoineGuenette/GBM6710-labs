@@ -44,7 +44,7 @@ def get_trajectory() -> str:
             [[187.5, 287.5, 0.0], [187.5, 262.5, 0.0], [187.5, 237.5, 0.0], [187.5, 212.5, 0.0], [187.5, 187.5, 0.0]],
         ] #  (x_min, y_max, 0.0)                                                                 (x_min, y_min, 0.0)
     )
-    pts_ball_world = np.array( # Change whith real calib data (chosen positions)
+    pts_ball_world = np.array(
         [[262.5, 262.5, 150.0], # (x_max, y_max, 150.0)
          [262.5, 37.5, 150.0], # (x_max, y_min, 150.0)
          [37.5, 262.5, 150.0]] # (x_min, y_max, 150.0)

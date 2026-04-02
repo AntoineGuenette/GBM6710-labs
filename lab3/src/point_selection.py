@@ -3,6 +3,17 @@ import numpy as np
 import os
 
 def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
+    """
+    Interactively select four corner points of a grid and generate an interpolated grid of points.
+
+    Parameters:
+        img_path (str): Path to the input image.
+        nb_rows (int): Number of rows in the grid.
+        nb_cols (int): Number of columns in the grid.
+
+    Returns:
+        grid (np.ndarray): Array of shape (nb_rows, nb_cols, 2) containing interpolated image points.
+    """
     points = []
     point_index = 0
     instructions = [
@@ -28,15 +39,15 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
         if event == cv2.EVENT_LBUTTONDOWN:
             nonlocal point_index
             nonlocal image
-            # Add the point
+            # Add selected point
             points.append((x, y))
             point_index += 1
 
-            # Show the point on the image
+            # Display the selected point on the image
             cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
             cv2.imshow("Image", draw_instruction(image))
     
-    # Load image
+    # Load the image
     image = cv2.imread(img_path)
     if image is None:
         raise ValueError(f"Image not found or unreadable: {img_path}")
@@ -44,7 +55,7 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
     cv2.imshow("Image", draw_instruction(image))
     cv2.setMouseCallback("Image", mouse_callback)
 
-    # Keep image opened until ESC is pressed to escape
+    # Keep the window open until ESC is pressed
     while True:
         cv2.imshow("Image", draw_instruction(image))
         key = cv2.waitKey(1) & 0xFF
@@ -54,14 +65,14 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
             break
     cv2.destroyAllWindows()
     
-    # Ensure we have exactly 4 corner points
+    # Ensure exactly 4 corner points were selected
     if len(points) != 4:
         raise ValueError("Exactly 4 points must be selected.")
 
-    # Unpack points (order matters based on instructions)
+    # Unpack points (order follows instructions)
     (x_max_y_max, x_max_y_min, x_min_y_max, x_min_y_min) = points
 
-    # Convert to numpy for easier interpolation
+    # Convert to NumPy arrays for interpolation
     p1 = np.array(x_max_y_max)
     p2 = np.array(x_min_y_max)
     p3 = np.array(x_max_y_min)
@@ -100,12 +111,21 @@ def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
             continue
         break
 
-    # Final pause at the end
+    # Final pause before closing
     cv2.waitKey(0)
     cv2.destroyWindow("Interpolated Grid")
     return grid
 
 def get_ball_points(img_path:str) -> np.ndarray:
+    """
+    Interactively select ball center points from an image.
+
+    Parameters:
+        img_path (str): Path to the input image.
+
+    Returns:
+        points (np.ndarray): Array of shape (3, 2) containing selected image points.
+    """
     points = []
     point_index = 0
     instructions = [
@@ -128,15 +148,15 @@ def get_ball_points(img_path:str) -> np.ndarray:
         if event == cv2.EVENT_LBUTTONDOWN:
             nonlocal point_index
             nonlocal image
-            # Add the point
+            # Add selected point
             points.append((x, y))
             point_index += 1
 
-            # Show the point on the image
+            # Display the selected point on the image
             cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
             cv2.imshow("Image", draw_instruction(image))
     
-    # Load image
+    # Load the image
     image = cv2.imread(img_path)
     if image is None:
         raise ValueError(f"Image not found or unreadable: {img_path}")
@@ -144,7 +164,7 @@ def get_ball_points(img_path:str) -> np.ndarray:
     cv2.imshow("Image", draw_instruction(image))
     cv2.setMouseCallback("Image", mouse_callback)
 
-    # Keep image opened until ESC is pressed to escape
+    # Keep the window open until ESC is pressed
     while True:
         cv2.imshow("Image", draw_instruction(image))
         key = cv2.waitKey(1) & 0xFF
@@ -154,13 +174,22 @@ def get_ball_points(img_path:str) -> np.ndarray:
             break
     cv2.destroyAllWindows()
     
-    # Ensure we have exactly 3 points
+    # Ensure exactly 3 points were selected
     if len(points) != 3:
         raise ValueError("Exactly 3 points must be selected.")
 
     return np.array(points)
 
 def get_phantom_points(img_path:str) -> np.ndarray:
+    """
+    Interactively select phantom corner points from an image.
+
+    Parameters:
+        img_path (str): Path to the input image.
+
+    Returns:
+        points (np.ndarray): Array of shape (4, 2) containing selected image points.
+    """
     points = []
     point_index = 0
     instructions = [
@@ -184,15 +213,15 @@ def get_phantom_points(img_path:str) -> np.ndarray:
         if event == cv2.EVENT_LBUTTONDOWN:
             nonlocal point_index
             nonlocal image
-            # Add the point
+            # Add selected point
             points.append((x, y))
             point_index += 1
 
-            # Show the point on the image
+            # Display the selected point on the image
             cv2.circle(image, (x, y), 5, (0, 0, 255), -1)
             cv2.imshow("Image", draw_instruction(image))
     
-    # Load image
+    # Load the image
     image = cv2.imread(img_path)
     if image is None:
         raise ValueError(f"Image not found or unreadable: {img_path}")
@@ -200,7 +229,7 @@ def get_phantom_points(img_path:str) -> np.ndarray:
     cv2.imshow("Image", draw_instruction(image))
     cv2.setMouseCallback("Image", mouse_callback)
 
-    # Keep image opened until ESC is pressed to escape
+    # Keep the window open until ESC is pressed
     while True:
         cv2.imshow("Image", draw_instruction(image))
         key = cv2.waitKey(1) & 0xFF
@@ -210,7 +239,7 @@ def get_phantom_points(img_path:str) -> np.ndarray:
             break
     cv2.destroyAllWindows()
     
-    # Ensure we have exactly 4 points
+    # Ensure exactly 4 points were selected
     if len(points) != 4:
         raise ValueError("Exactly 4 points must be selected.")
 

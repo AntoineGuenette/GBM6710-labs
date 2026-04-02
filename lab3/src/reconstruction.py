@@ -9,8 +9,7 @@ def grid_to_vec(points):
         points (np.ndarray): Array of shape (rows, cols, 2) containing 2D points.
 
     Returns:
-        coords (np.ndarray): Array of shape (rows*cols, 2) containing the flattened list of
-        coordinates.
+        coords (np.ndarray): Array of shape (rows*cols, 2) containing flattened coordinates.
     """
     (rows,col,_) = points.shape
 
@@ -24,29 +23,27 @@ def grid_to_vec(points):
 
 def get_calib_mat(camera_points: np.ndarray, world_points: np.ndarray) -> np.ndarray:
     """
-    Compute the calibration matrix relating camera coordinates to world coordinates using a
-    quadratic model and least squares estimation.
+    Compute the calibration matrix relating image coordinates to world coordinates using a
+    quadratic model and least squares.
 
     Parameters:
-        camera_points (np.ndarray): Array of shape (rows, cols, 2) containing 2D image coordinates.
-        world_points (np.ndarray): Array of shape (rows, cols, 2) containing corresponding 2D world
-            coordinates.
+        camera_points (np.ndarray): Array of shape (rows, cols, 2) of image coordinates.
+        world_points (np.ndarray): Array of shape (rows, cols, 3) of world coordinates.
 
     Returns:
-        U (np.ndarray): Calibration matrix of shape (6, 2) mapping image coordinates to world
-        coordinates.
+        U (np.ndarray): Calibration matrix of shape (6, 2).
     """
-    # Convert the points in a grid form to a vector form
+    # Convert grid-form points to vector form
     world_points = grid_to_vec(world_points)
     camera_points = grid_to_vec(camera_points)
 
-    # Get coordinate vectors
+    # Extract coordinate vectors
     m_vector = camera_points[:,0]
     n_vector = camera_points[:,1]
     x_vector = world_points[:,0]
     y_vector = world_points[:,1]
 
-    # Compute calibration matrix (U)
+    # Compute calibration matrix U
     M = np.stack(arrays = (m_vector ** 2, m_vector * n_vector, n_vector ** 2, m_vector, n_vector, np.ones_like(m_vector)), axis =1 )
     R = np.stack(arrays = (x_vector, y_vector), axis = 1)
     U = np.linalg.inv(M.T @ M) @ M.T @ R
@@ -55,13 +52,15 @@ def get_calib_mat(camera_points: np.ndarray, world_points: np.ndarray) -> np.nda
 
 def get_camera_center(U, ball_img_pts, ball_world_pts):
     """
-    Estimate camera center: C is the point such that for each ball,
-    the ray from C through P_plane (backprojected image point on Z=0)
-    passes through Pw (3D world position of the ball).
-    
-    Constraint: C, P_plane, Pw are collinear
-    => (Pw - C) × (P_plane - C) = 0
-    Which linearizes to solving a least-squares system.
+    Estimate the camera center using known correspondences between image points and 3D world points.
+
+    Parameters:
+        U (np.ndarray): Calibration matrix.
+        ball_img_pts (np.ndarray): Array of shape (N, 2) of image points.
+        ball_world_pts (np.ndarray): Array of shape (N, 3) of corresponding world points.
+
+    Returns:
+        C (np.ndarray): Estimated camera center of shape (3,).
     """
     
     def backproject(U, pt):
@@ -78,23 +77,34 @@ def get_camera_center(U, ball_img_pts, ball_world_pts):
     for (u, v), Pw in zip(ball_img_pts, ball_world_pts):
         P_plane = backproject(U, (u, v))
         
-        # Direction: de P_plane vers Pw (connue sans C)
+        # Direction from P_plane to Pw (known without C)
         d = Pw - P_plane
         d = d / np.linalg.norm(d)
 
-        # Contrainte: C est sur la droite passant par Pw de direction d
-        # => minimiser ||(I - d dᵀ)(C - Pw)||²
+        # Constraint: C lies on the line passing through Pw with direction d
+        # => minimize ||(I - d dᵀ)(C - Pw)||²
         I = np.eye(3)
         M = I - np.outer(d, d)
         A += M
-        b += M @ Pw  # = M @ Pw car M @ Pw est le terme constant
+        b += M @ Pw  # = M @ Pw because M @ Pw is the constant term
 
     C = np.linalg.solve(A, b)
     return C
 
 def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
     """
-    Triangulate 3D points from corresponding 2D image points.
+    Triangulate 3D points from corresponding 2D image points in two views.
+
+    Parameters:
+        pts1 (np.ndarray): Array of shape (N, 2) of image points in camera 1.
+        pts2 (np.ndarray): Array of shape (N, 2) of image points in camera 2.
+        C1 (np.ndarray): Camera 1 center.
+        C2 (np.ndarray): Camera 2 center.
+        calib_mat1 (np.ndarray): Calibration matrix for camera 1.
+        calib_mat2 (np.ndarray): Calibration matrix for camera 2.
+
+    Returns:
+        points_3d (np.ndarray): Array of shape (N, 3) of triangulated 3D points.
     """
 
     def backproject(calib_mat, pt):
@@ -109,22 +119,22 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
         x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
         y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
 
-        # direction from camera toward projected point on plane
-        dir_vec = np.array([x, y, 0.0])  # plan Z=0 (cohérent calibration)
+        # Direction from camera toward projected point on plane
+        dir_vec = np.array([x, y, 0.0])  # Z=0 plane (consistent with calibration)
         return dir_vec
 
     points_3d = []
 
     for p1, p2 in zip(pts1, pts2):
 
-        # Directions
+        # Compute ray directions
         d1 = backproject(calib_mat1, p1) - C1
         d2 = backproject(calib_mat2, p2) - C2
 
         d1 /= np.linalg.norm(d1)
         d2 /= np.linalg.norm(d2)
 
-        # Solve closest points between rays
+        # Solve for closest points between rays
         A = np.stack([d1, -d2], axis=1)
         b = C2 - C1
 
@@ -133,7 +143,7 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
         P1 = C1 + t[0] * d1
         P2 = C2 + t[1] * d2
 
-        # midpoint
+        # Compute midpoint
         P = (P1 + P2) / 2
         points_3d.append(P)
 
@@ -141,15 +151,15 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
 
 def project_points(world_points, C, calib_mat):
     """
-    Project 3D world points into image coordinates (u, v).
+    Project 3D world points into image coordinates.
 
     Parameters:
-        world_points (np.ndarray): Array of shape (N, 3) of 3D world points.
-        C (np.ndarray): Camera center of shape (3,).
-        calib_mat (np.ndarray): Calibration matrix (6x2).
+        world_points (np.ndarray): Array of shape (N, 3) of world points.
+        C (np.ndarray): Camera center.
+        calib_mat (np.ndarray): Calibration matrix.
 
     Returns:
-        img_points (np.ndarray): Array of shape (N, 2) of image coordinates (u, v).
+        img_points (np.ndarray): Array of shape (N, 2) of image coordinates.
     """
 
     def forward_model(m, n, U):
@@ -164,12 +174,12 @@ def project_points(world_points, C, calib_mat):
     img_points = []
 
     for Pw in world_points:
-        # Direction from camera to point
+        # Compute direction from camera to point
         d = Pw - C
         d = d / np.linalg.norm(d)
 
-        # We find (m, n) such that forward_model(m,n) lies on this ray
-        # Solve via nonlinear least squares (simple iterative search)
+        # Find (m, n) such that forward_model(m, n) lies on this ray
+        # Solve using nonlinear least squares (iterative method)
 
         def residual(p):
             m, n = p
@@ -181,7 +191,7 @@ def project_points(world_points, C, calib_mat):
         # Initial guess
         p = np.array([0.0, 0.0])
 
-        # Simple Gauss-Newton iterations
+        # Gauss-Newton iterations
         for _ in range(20):
             eps = 1e-6
             r = residual(p)
