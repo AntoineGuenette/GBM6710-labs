@@ -31,4 +31,4 @@ deflection_point_phantom = np.array([3.39, -113.00, -372.00], dtype=float)
 middle_point_phantom = np.array([3.39, -132.00, -372.00], dtype=float)
 
 # Starting point (between target and obstacle, outside the phantom)
-starting_point_phantom = np.array([3.39, -132.00, -425.00], dtype=float)
+starting_point_phantom = np.array([3.39, -146.00, -425.00], dtype=float)
