@@ -29,7 +29,7 @@ def get_trajectory() -> str:
     img_cam1_path = os.path.join(img_dir, 'imgs', 'cam1.jpg')
     img_cam2_path = os.path.join(img_dir, 'imgs', 'cam2.jpg')
 
-    # Get camera point
+    # Get grid points in camera coordinates
     pts_grid_cam1 = get_grid_points(calib_img_cam1_path)
     pts_grid_cam2 = get_grid_points(calib_img_cam2_path)
 
@@ -53,7 +53,7 @@ def get_trajectory() -> str:
     calib_mat_cam1 = get_calib_mat(pts_grid_cam1, pts_grid_world)
     calib_mat_cam2 = get_calib_mat(pts_grid_cam2, pts_grid_world)
 
-    # Get ball points
+    # Get ball points in camera coordinates
     pts_ball_cam1 = get_ball_points(calib_img_cam1_path)
     pts_ball_cam2 = get_ball_points(calib_img_cam2_path)
 
@@ -61,11 +61,7 @@ def get_trajectory() -> str:
     C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world)
     C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world)
 
-    print("\nCAMERA COORDINATES:")
-    print(f"Camera 1: {C_cam1}")
-    print(f"Camera 2: {C_cam2}\n")
-
-    # Get phantom points in cam coordinates
+    # Get phantom points in camera coordinates
     pts_phantom_cam1 = get_phantom_points(img_cam1_path)
     pts_phantom_cam2 = get_phantom_points(img_cam2_path)
 
@@ -78,7 +74,6 @@ def get_trajectory() -> str:
         calib_mat_cam1,
         calib_mat_cam2
     )
-    print(f"TRIANGULATED POINTS:\n{box_corners_world}")
 
     # Compute the registration transform from phantom to world coordinates
     box_corners_phantom = np.array([box_back_right_phantom, box_back_left_phantom, box_front_right_phantom, box_front_left_phantom])
@@ -111,6 +106,48 @@ def get_trajectory() -> str:
     direction = middle_point_world - starting_point_world
     direction = direction / np.linalg.norm(direction)
     effector_angles = euler_from_direction(direction)
+
+    # Compute safe rotation angle for joint 1 using axis intersection (ray from contact point)
+    p = contact_point_world.copy()
+    d = -direction.copy()
+
+    # Work in XY plane
+    p_xy = p[:2]
+    d_xy = d[:2]
+
+    eps = 1e-6
+    t_candidates = []
+
+    # Intersection with x = 0 (Y axis)
+    if abs(d_xy[0]) > eps:
+        t_x = -p_xy[0] / d_xy[0]
+        if t_x > 0:
+            y_at_tx = p_xy[1] + t_x * d_xy[1]
+            t_candidates.append((t_x, 'y', y_at_tx))
+
+    # Intersection with y = 0 (X axis)
+    if abs(d_xy[1]) > eps:
+        t_y = -p_xy[1] / d_xy[1]
+        if t_y > 0:
+            x_at_ty = p_xy[0] + t_y * d_xy[0]
+            t_candidates.append((t_y, 'x', x_at_ty))
+
+    # Select closest intersection
+    if len(t_candidates) == 0:
+        safe_rot = 0  # fallback
+    else:
+        t_min, axis, coord = min(t_candidates, key=lambda x: x[0])
+        
+        if axis == 'x':  # crossed y = 0 → X axis
+            if coord >= 0:
+                safe_rot = 0      # +X
+            else:
+                safe_rot = 170    # -X
+        else:  # axis == 'y', crossed x = 0 → Y axis
+            if coord >= 0:
+                safe_rot = 90     # +Y
+            else:
+                safe_rot = -90    # -Y
     
     # Show augmented images (highlight obstacle and target)
 
@@ -120,6 +157,7 @@ SetTRF(0,0,71.3,0,0,0)
 SetJointVel(10)
 SetCartLinVel(10)
 SetCartAngVel(15)
+MoveJoints({safe_rot},0,0,0,0,0)
 MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
 Delay(3)
 MoveLin({middle_point_world[0]:.2f},{middle_point_world[1]:.2f},{middle_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
@@ -132,6 +170,7 @@ MoveLin({contact_point_world[0]:.2f},{contact_point_world[1]:.2f},{contact_point
 MoveLin({middle_point_world[0]:.2f},{middle_point_world[1]:.2f},{middle_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
 SetCartLinVel(10)
 MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
+MoveJoints({safe_rot},0,0,0,0,0)
 MoveJoints(0,0,0,0,0,0)
         """
 
@@ -141,4 +180,3 @@ if __name__ == "__main__":
     instructions = get_trajectory()
 
     print(f"\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n{instructions}")
-    
