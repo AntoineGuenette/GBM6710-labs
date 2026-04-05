@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.spatial import KDTree
-
+import matplotlib.pyplot as plt
 def grid_to_vec(points):
     """
     Convert a grid of 2D points into a vectorized list of coordinates.
@@ -50,7 +50,23 @@ def get_calib_mat(camera_points: np.ndarray, world_points: np.ndarray) -> np.nda
 
     return U
 
-def get_camera_center(U, ball_img_pts, ball_world_pts):
+def backproject(calib_mat, pt, z):
+    """
+    Convert image point to a direction vector in world space.
+    """
+    m, n = pt
+
+    Ax, Bx, Cx, Dx, Ex, Fx = calib_mat[:, 0]
+    Ay, By, Cy, Dy, Ey, Fy = calib_mat[:, 1]
+
+    x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+    y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+
+    # Direction from camera toward projected point on plane
+    dir_vec = np.array([x, y, z])  # Z=0 plane (consistent with calibration)
+    return dir_vec
+
+def get_camera_center(U, ball_img_pts, ball_world_pts, z_vec):
     """
     Estimate the camera center using known correspondences between image points and 3D world points.
 
@@ -62,20 +78,11 @@ def get_camera_center(U, ball_img_pts, ball_world_pts):
     Returns:
         C (np.ndarray): Estimated camera center of shape (3,).
     """
-    
-    def backproject(U, pt):
-        m, n = pt
-        Ax, Bx, Cx, Dx, Ex, Fx = U[:, 0]
-        Ay, By, Cy, Dy, Ey, Fy = U[:, 1]
-        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
-        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
-        return np.array([x, y, 0.0])
-
     A = np.zeros((3, 3))
     b = np.zeros(3)
 
-    for (u, v), Pw in zip(ball_img_pts, ball_world_pts):
-        P_plane = backproject(U, (u, v))
+    for (u, v), Pw, z in zip(ball_img_pts, ball_world_pts, z_vec):
+        P_plane = backproject(U, (u, v), z)
         
         # Direction from P_plane to Pw (known without C)
         d = Pw - P_plane
@@ -91,7 +98,8 @@ def get_camera_center(U, ball_img_pts, ball_world_pts):
     C = np.linalg.solve(A, b)
     return C
 
-def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
+
+def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2, z_vec):
     """
     Triangulate 3D points from corresponding 2D image points in two views.
 
@@ -106,30 +114,13 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
     Returns:
         points_3d (np.ndarray): Array of shape (N, 3) of triangulated 3D points.
     """
-
-    def backproject(calib_mat, pt):
-        """
-        Convert image point to a direction vector in world space.
-        """
-        m, n = pt
-
-        Ax, Bx, Cx, Dx, Ex, Fx = calib_mat[:, 0]
-        Ay, By, Cy, Dy, Ey, Fy = calib_mat[:, 1]
-
-        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
-        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
-
-        # Direction from camera toward projected point on plane
-        dir_vec = np.array([x, y, 0.0])  # Z=0 plane (consistent with calibration)
-        return dir_vec
-
     points_3d = []
 
-    for p1, p2 in zip(pts1, pts2):
+    for p1, p2, z in zip(pts1, pts2, z_vec):
 
         # Compute ray directions
-        d1 = backproject(calib_mat1, p1) - C1
-        d2 = backproject(calib_mat2, p2) - C2
+        d1 = backproject(calib_mat1, p1, z) - C1
+        d2 = backproject(calib_mat2, p2, z) - C2
 
         d1 /= np.linalg.norm(d1)
         d2 /= np.linalg.norm(d2)
@@ -146,6 +137,7 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
         # Compute midpoint
         P = (P1 + P2) / 2
         points_3d.append(P)
+    print(points_3d)
 
     return np.array(points_3d)
 
@@ -209,3 +201,95 @@ def project_points(world_points, C, calib_mat):
         img_points.append(p)
 
     return np.array(img_points)
+
+def plot_3D_results(cam1: np.ndarray, cam2: np.ndarray, phantom_points: np.ndarray, ball_points_world: np.ndarray):
+
+    def extract_3D_position(point: np.ndarray):
+        x = point[:,0]
+        y = point[:,1]
+        z = point[:,2]
+        return x,y,z
+    # Retrieve center of cam points
+    cam1_x, cam1_y, cam1_z = cam1[0], cam1[1], cam1[2]
+    cam2_x, cam2_y, cam2_z = cam2[0], cam2[1], cam2[2]
+
+    # Retrive phantom points
+    phantom_pointsx, phantom_pointsy, phantom_pointsz = extract_3D_position(phantom_points)
+
+    # Retrive ball points in world coordinates
+    ball_pointsx, ball_pointsy, ball_pointsz = extract_3D_position(ball_points_world)
+
+
+    fig  = plt.figure()
+    ax = fig.add_subplot(projection = "3d")
+
+    # Define grid points
+    x = np.array([ (25 * i) + 12.5 for i in range(-12,11)])
+    y = np.array([ (25 * i) + 12.5 for i in range(-12,11)])
+    zero = np.array([0 for i in range(len(x))])
+    x_zero = np.array([y[0] for i in range(len(x))])
+    y_zero = np.array([x[0] for i in range(len(y))])
+
+    # Plot grid points
+    ax.scatter(x,y_zero,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x_zero,y,zero, c = "blue", marker = 'o', s = 25)
+
+    # Plot center of robot
+    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25 )
+    
+    # Plot camera center points
+    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25)
+    ax.scatter(cam2_x, cam2_y, cam2_z, c = "red", marker = 'o', s = 25)
+
+    # Plot phantom points
+    ax.scatter(phantom_pointsx, phantom_pointsy, phantom_pointsz, c = "magenta", marker = 'o', s = 25)
+
+    # Plot ball points
+    ax.scatter(ball_pointsx, ball_pointsy, ball_pointsz, c = "orange", marker = 'o', s = 25)
+
+    ax.set_xlabel('X Axis')
+    ax.set_ylabel('Y Axis')
+    ax.set_zlabel('Z Axis')
+    plt.show()
+
+def plot_3D_results_cam_calib(cam1: np.ndarray, cam2: np.ndarray):
+
+    def extract_3D_position(point: np.ndarray):
+        x = point[:,0]
+        y = point[:,1]
+        z = point[:,2]
+        return x,y,z
+    # Retrieve center of cam points
+    cam1_x, cam1_y, cam1_z = cam1[0], cam1[1], cam1[2]
+    cam2_x, cam2_y, cam2_z = cam2[0], cam2[1], cam2[2]
+
+    fig  = plt.figure()
+    ax = fig.add_subplot(projection = "3d")
+
+    # Define grid points
+    x = np.array([ (25 * i) + 12.5 for i in range(-12,11)])
+    y = np.array([ (25 * i) + 12.5 for i in range(-12,11)])
+    zero = np.array([0 for i in range(len(x))])
+    x_min = np.array([y[0] for i in range(len(x))])
+    x_max = np.array([y[-1] for i in range(len(x))])
+    y_min = np.array([x[0] for i in range(len(y))])
+    y_max = np.array([x[-1] for i in range(len(y))])
+
+    # Plot grid points
+    ax.scatter(x,y_min,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x,y_max,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x_max,y,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x_min,y,zero, c = "blue", marker = 'o', s = 25)
+
+    # Plot center of robot
+    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25 )
+    
+    # Plot camera center points
+    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25)
+    ax.scatter(cam2_x, cam2_y, cam2_z, c = "red", marker = 'o', s = 25)
+
+
+    ax.set_xlabel('X Axis')
+    ax.set_ylabel('Y Axis')
+    ax.set_zlabel('Z Axis')
+    plt.show()

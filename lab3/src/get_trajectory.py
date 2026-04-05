@@ -4,7 +4,7 @@ import cv2
 
 from lab3.src.phantom_params import *
 from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
-from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points, project_points
+from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points, project_points, plot_3D_results, plot_3D_results_cam_calib
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
@@ -59,23 +59,37 @@ def get_trajectory() -> str:
     pts_ball_cam2 = get_ball_points(calib_img_cam2_path)
 
     # Get camera positions in world coordinates
-    C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world)
-    C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world)
+    z_vec_ball = np.array([95.0, 145.0, 145.0])
+    C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world, z_vec_ball)
+    C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world, z_vec_ball)
+
+    plot_3D_results_cam_calib(C_cam1, C_cam2)
 
     # Get phantom points in camera coordinates
     pts_phantom_cam1 = get_phantom_points(img_cam1_path)
     pts_phantom_cam2 = get_phantom_points(img_cam2_path)
 
     # Triangulate the points to get phantom points in world coordinates
+    z_vec_phantom = np.array([90 for i in range(len(pts_phantom_cam1))])
     box_corners_world = triangulate_points(
         pts_phantom_cam1,
         pts_phantom_cam2,
         C_cam1,
         C_cam2,
         calib_mat_cam1,
-        calib_mat_cam2
+        calib_mat_cam2,
+        z_vec_phantom
     )
 
+    ball_points_world = triangulate_points(
+        pts_ball_cam1,
+        pts_ball_cam2,
+        C_cam1,
+        C_cam2,
+        calib_mat_cam1,
+        calib_mat_cam2,
+        z_vec_ball
+    )
     # Compute the registration transform from phantom to world coordinates
     box_corners_phantom = np.array([box_back_right_phantom, box_back_left_phantom, box_front_right_phantom, box_front_left_phantom])
     T_reg = compute_registration_transform(
@@ -171,6 +185,8 @@ def get_trajectory() -> str:
     trg_img_cam1 = project_points(trg_world, C_cam1, calib_mat_cam1)
     trg_img_cam2 = project_points(trg_world, C_cam2, calib_mat_cam2)
 
+
+    plot_3D_results(C_cam1, C_cam2, box_corners_world,ball_points_world )
     # Show augmented images (highlight obstacle and target with filled polygons)
     img_cam1 = cv2.imread(img_cam1_path, cv2.IMREAD_GRAYSCALE)
     img_cam2 = cv2.imread(img_cam2_path, cv2.IMREAD_GRAYSCALE)

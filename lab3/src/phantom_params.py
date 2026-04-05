@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 # All dimensions are in mm
 # The left and right sides are defined by looking at the open side of the phantom
@@ -32,3 +33,4 @@ middle_point_phantom = np.array([3.86, -121.39, -365.78], dtype=float)
 
 # Starting point (between target and obstacle, outside the phantom)
 starting_point_phantom = np.array([3.86, -136.00, -425.00], dtype=float)
+
