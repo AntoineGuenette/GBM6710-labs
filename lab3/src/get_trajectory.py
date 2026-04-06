@@ -154,8 +154,8 @@ def get_trajectory() -> str:
 
     # Find the obstacle corners in each camera coordinates
     obs_world = np.array([
-        obs_top_right_world,
         obs_top_left_world,
+        obs_top_right_world,
         obs_bottom_right_world,
         obs_bottom_left_world
     ])
@@ -164,8 +164,8 @@ def get_trajectory() -> str:
 
     # Find the target corners in each camera coordinates
     trg_world = np.array([
-        trg_top_right_world,
         trg_top_left_world,
+        trg_top_right_world,
         trg_bottom_right_world,
         trg_bottom_left_world
     ])
@@ -182,10 +182,11 @@ def get_trajectory() -> str:
     img_cam1 = cv2.cvtColor(img_cam1, cv2.COLOR_GRAY2BGR)
     img_cam2 = cv2.cvtColor(img_cam2, cv2.COLOR_GRAY2BGR)
 
-    obs_cam1_int = obs_img_cam1.astype(int)
-    trg_cam1_int = trg_img_cam1.astype(int)
-    obs_cam2_int = obs_img_cam2.astype(int)
-    trg_cam2_int = trg_img_cam2.astype(int)
+    # Convert to OpenCV polygon format (int32 and shape Nx1x2)
+    obs_cam1_int = obs_img_cam1.astype(np.int32).reshape((-1,1,2))
+    trg_cam1_int = trg_img_cam1.astype(np.int32).reshape((-1,1,2))
+    obs_cam2_int = obs_img_cam2.astype(np.int32).reshape((-1,1,2))
+    trg_cam2_int = trg_img_cam2.astype(np.int32).reshape((-1,1,2))
 
     # Draw colored polygons on grayscale background
     cv2.fillPoly(img_cam1, [obs_cam1_int], (0, 0, 255))  # obstacle = red
