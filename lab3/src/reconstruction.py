@@ -162,47 +162,52 @@ def project_points(world_points, C, calib_mat):
         img_points (np.ndarray): Array of shape (N, 2) of image coordinates.
     """
 
-    def forward_model(m, n, U):
+    def forward_xy(m, n, U):
         Ax, Bx, Cx, Dx, Ex, Fx = U[:, 0]
         Ay, By, Cy, Dy, Ey, Fy = U[:, 1]
 
         x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
         y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
 
-        return np.array([x, y, 0.0])
+        return np.array([x, y])
 
     img_points = []
 
     for Pw in world_points:
-        # Compute direction from camera to point
+        # --- STEP 1: Ray-plane intersection (Z = 0) ---
         d = Pw - C
-        d = d / np.linalg.norm(d)
 
-        # Find (m, n) such that forward_model(m, n) lies on this ray
-        # Solve using nonlinear least squares (iterative method)
+        # Avoid division by zero
+        if abs(d[2]) < 1e-8:
+            continue
 
+        t = -C[2] / d[2]
+        P_plane = C + t * d  # intersection with Z=0
+
+        X, Y = P_plane[0], P_plane[1]
+
+        # --- STEP 2: Invert calibration model (find m,n such that f(m,n) = (X,Y)) ---
         def residual(p):
             m, n = p
-            P_plane = forward_model(m, n, calib_mat)
-            ray_dir = P_plane - C
-            ray_dir = ray_dir / np.linalg.norm(ray_dir)
-            return ray_dir - d
+            return forward_xy(m, n, calib_mat) - np.array([X, Y])
 
         # Initial guess
-        p = np.array([0.0, 0.0])
+        p = np.array([X, Y])
 
-        # Gauss-Newton iterations
         for _ in range(20):
-            eps = 1e-6
             r = residual(p)
 
-            J = np.zeros((3, 2))
+            if np.linalg.norm(r) < 1e-6:
+                break
+
+            eps = 1e-6
+            J = np.zeros((2, 2))
+
             for i in range(2):
                 dp = np.zeros(2)
                 dp[i] = eps
                 J[:, i] = (residual(p + dp) - r) / eps
 
-            # Solve J * delta = -r
             delta, _, _, _ = np.linalg.lstsq(J, -r, rcond=None)
             p += delta
 
