@@ -239,34 +239,31 @@ def plot_3D_results(cam1: np.ndarray, cam2: np.ndarray, phantom_points: np.ndarr
     y_zero = np.array([x[0] for i in range(len(y))])
 
     # Plot grid points
-    ax.scatter(x,y_zero,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x,y_zero,zero, c = "blue", marker = 'o', s = 25, label="Z=0 plane limits")
     ax.scatter(x_zero,y,zero, c = "blue", marker = 'o', s = 25)
 
     # Plot center of robot
-    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25 )
+    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25, label="Robot center")
     
     # Plot camera center points
-    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25)
+    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25, label="Camera centers")
     ax.scatter(cam2_x, cam2_y, cam2_z, c = "red", marker = 'o', s = 25)
 
     # Plot phantom points
-    ax.scatter(phantom_pointsx, phantom_pointsy, phantom_pointsz, c = "magenta", marker = 'o', s = 25)
+    ax.scatter(phantom_pointsx, phantom_pointsy, phantom_pointsz, c = "magenta", marker = 'o', s = 25, label="Phantom points")
 
     # Plot ball points
-    ax.scatter(ball_pointsx, ball_pointsy, ball_pointsz, c = "orange", marker = 'o', s = 25)
+    ax.scatter(ball_pointsx, ball_pointsy, ball_pointsz, c = "orange", marker = 'o', s = 25, label="Ball points")
 
     ax.set_xlabel('X Axis')
     ax.set_ylabel('Y Axis')
     ax.set_zlabel('Z Axis')
+    ax.set_title("3D Reconstruction Results")
+    ax.legend()
     plt.show()
 
 def plot_3D_results_cam_calib(cam1: np.ndarray, cam2: np.ndarray):
 
-    def extract_3D_position(point: np.ndarray):
-        x = point[:,0]
-        y = point[:,1]
-        z = point[:,2]
-        return x,y,z
     # Retrieve center of cam points
     cam1_x, cam1_y, cam1_z = cam1[0], cam1[1], cam1[2]
     cam2_x, cam2_y, cam2_z = cam2[0], cam2[1], cam2[2]
@@ -284,20 +281,22 @@ def plot_3D_results_cam_calib(cam1: np.ndarray, cam2: np.ndarray):
     y_max = np.array([x[-1] for i in range(len(y))])
 
     # Plot grid points
-    ax.scatter(x,y_min,zero, c = "blue", marker = 'o', s = 25)
+    ax.scatter(x,y_min,zero, c = "blue", marker = 'o', s = 25, label="Z=0 plane limits")
     ax.scatter(x,y_max,zero, c = "blue", marker = 'o', s = 25)
     ax.scatter(x_max,y,zero, c = "blue", marker = 'o', s = 25)
     ax.scatter(x_min,y,zero, c = "blue", marker = 'o', s = 25)
 
     # Plot center of robot
-    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25 )
+    ax.scatter(0,0,0, c ="green", marker = 'o', s = 25, label="Robot center")
     
     # Plot camera center points
-    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25)
+    ax.scatter(cam1_x, cam1_y, cam1_z, c = "red", marker = 'o', s = 25, label="Camera centers")
     ax.scatter(cam2_x, cam2_y, cam2_z, c = "red", marker = 'o', s = 25)
 
 
     ax.set_xlabel('X Axis')
     ax.set_ylabel('Y Axis')
     ax.set_zlabel('Z Axis')
+    ax.set_title("Camera Calibration Visualization")
+    ax.legend()
     plt.show()
