@@ -1,6 +1,6 @@
 import numpy as np
-from scipy.spatial import KDTree
 import matplotlib.pyplot as plt
+
 def grid_to_vec(points):
     """
     Convert a grid of 2D points into a vectorized list of coordinates.
@@ -50,23 +50,7 @@ def get_calib_mat(camera_points: np.ndarray, world_points: np.ndarray) -> np.nda
 
     return U
 
-def backproject(calib_mat, pt, z):
-    """
-    Convert image point to a direction vector in world space.
-    """
-    m, n = pt
-
-    Ax, Bx, Cx, Dx, Ex, Fx = calib_mat[:, 0]
-    Ay, By, Cy, Dy, Ey, Fy = calib_mat[:, 1]
-
-    x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
-    y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
-
-    # Direction from camera toward projected point on plane
-    dir_vec = np.array([x, y, z])  # Z=0 plane (consistent with calibration)
-    return dir_vec
-
-def get_camera_center(U, ball_img_pts, ball_world_pts, z_vec):
+def get_camera_center(U, ball_img_pts, ball_world_pts):
     """
     Estimate the camera center using known correspondences between image points and 3D world points.
 
@@ -78,11 +62,20 @@ def get_camera_center(U, ball_img_pts, ball_world_pts, z_vec):
     Returns:
         C (np.ndarray): Estimated camera center of shape (3,).
     """
+    
+    def backproject(U, pt):
+        m, n = pt
+        Ax, Bx, Cx, Dx, Ex, Fx = U[:, 0]
+        Ay, By, Cy, Dy, Ey, Fy = U[:, 1]
+        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+        return np.array([x, y, 0.0])
+
     A = np.zeros((3, 3))
     b = np.zeros(3)
 
-    for (u, v), Pw, z in zip(ball_img_pts, ball_world_pts, z_vec):
-        P_plane = backproject(U, (u, v), z)
+    for (u, v), Pw in zip(ball_img_pts, ball_world_pts):
+        P_plane = backproject(U, (u, v))
         
         # Direction from P_plane to Pw (known without C)
         d = Pw - P_plane
@@ -98,8 +91,7 @@ def get_camera_center(U, ball_img_pts, ball_world_pts, z_vec):
     C = np.linalg.solve(A, b)
     return C
 
-
-def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2, z_vec):
+def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2):
     """
     Triangulate 3D points from corresponding 2D image points in two views.
 
@@ -114,13 +106,30 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2, z_vec):
     Returns:
         points_3d (np.ndarray): Array of shape (N, 3) of triangulated 3D points.
     """
+
+    def backproject(calib_mat, pt):
+        """
+        Convert image point to a direction vector in world space.
+        """
+        m, n = pt
+
+        Ax, Bx, Cx, Dx, Ex, Fx = calib_mat[:, 0]
+        Ay, By, Cy, Dy, Ey, Fy = calib_mat[:, 1]
+
+        x = Ax*m**2 + Bx*m*n + Cx*n**2 + Dx*m + Ex*n + Fx
+        y = Ay*m**2 + By*m*n + Cy*n**2 + Dy*m + Ey*n + Fy
+
+        # Direction from camera toward projected point on plane
+        dir_vec = np.array([x, y, 0.0])  # Z=0 plane (consistent with calibration)
+        return dir_vec
+
     points_3d = []
 
-    for p1, p2, z in zip(pts1, pts2, z_vec):
+    for p1, p2 in zip(pts1, pts2):
 
         # Compute ray directions
-        d1 = backproject(calib_mat1, p1, z) - C1
-        d2 = backproject(calib_mat2, p2, z) - C2
+        d1 = backproject(calib_mat1, p1) - C1
+        d2 = backproject(calib_mat2, p2) - C2
 
         d1 /= np.linalg.norm(d1)
         d2 /= np.linalg.norm(d2)
@@ -137,7 +146,6 @@ def triangulate_points(pts1, pts2, C1, C2, calib_mat1, calib_mat2, z_vec):
         # Compute midpoint
         P = (P1 + P2) / 2
         points_3d.append(P)
-    print(points_3d)
 
     return np.array(points_3d)
 

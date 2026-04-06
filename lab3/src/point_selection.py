@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import os
 
 def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
     """
