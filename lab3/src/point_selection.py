@@ -1,6 +1,32 @@
 import cv2
 import numpy as np
 
+def generate_grid_world(x_max, y_max, spacing=25.0, n=5):
+    """
+    Generate a grid of world points ordered from (x_max, y_max) to (x_min, y_min),
+    matching the expected calibration ordering.
+
+    Parameters:
+        x_max (float): X coordinate of the top-right corner
+        y_max (float): Y coordinate of the top-right corner
+        spacing (float): Distance between adjacent points (default: 25 mm)
+        n (int): number of points per row/column (default: 5)
+
+    Returns:
+        np.ndarray: (n, n, 3) array of world points
+    """
+    pts = []
+
+    for j in range(n):  # rows (x direction: decreasing)
+        row = []
+        for i in range(n):  # columns (y direction: decreasing)
+            x = x_max - j * spacing
+            y = y_max - i * spacing
+            row.append([x, y, 0.0])
+        pts.append(row)
+
+    return np.array(pts)
+
 def get_grid_points(img_path:str, nb_rows:int=5, nb_cols:int=5) -> np.ndarray:
     """
     Interactively select four corner points of a grid and generate an interpolated grid of points.
@@ -177,7 +203,77 @@ def get_ball_points(img_path:str) -> np.ndarray:
     if len(points) != 3:
         raise ValueError("Exactly 3 points must be selected.")
 
-    return np.array(points)
+    points = np.array(points)
+
+    # --- Automatic circle detection around selected points ---
+    image_color = image.copy()
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (9, 9), 2)
+
+    detected_centers = []
+
+    for (x, y) in points:
+        x, y = int(x), int(y)
+
+        # Define ROI around clicked point
+        roi_size = 50
+        x_min = max(x - roi_size, 0)
+        x_max = min(x + roi_size, gray.shape[1])
+        y_min = max(y - roi_size, 0)
+        y_max = min(y + roi_size, gray.shape[0])
+
+        roi = gray[y_min:y_max, x_min:x_max]
+
+        # Detect circles using Hough Transform
+        circles = cv2.HoughCircles(
+            roi,
+            cv2.HOUGH_GRADIENT,
+            dp=1.2,
+            minDist=30,
+            param1=100,
+            param2=20,
+            minRadius=10,
+            maxRadius=100
+        )
+
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+
+            # Take the closest circle to the clicked point
+            best_circle = None
+            min_dist = float("inf")
+
+            for (cx, cy, r) in circles:
+                dist = np.sqrt((cx - (x - x_min))**2 + (cy - (y - y_min))**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_circle = (cx, cy, r)
+
+            if best_circle is not None:
+                cx, cy, r = best_circle
+
+                # Convert back to full image coordinates
+                cx_full = cx + x_min
+                cy_full = cy + y_min
+
+                detected_centers.append((cx_full, cy_full))
+
+                # Draw circle contour (blue)
+                cv2.circle(image_color, (cx_full, cy_full), r, (255, 120, 0), 2)
+
+                # Draw center (blue filled)
+                cv2.circle(image_color, (cx_full, cy_full), 4, (255, 120, 0), -1)
+        else:
+            # fallback: use clicked point if detection fails
+            detected_centers.append((x, y))
+            cv2.circle(image_color, (x, y), 4, (255, 0, 0), -1)
+
+    # Display result
+    cv2.imshow("Detected Circles", image_color)
+    cv2.waitKey(0)
+    cv2.destroyWindow("Detected Circles")
+
+    return np.array(detected_centers)
 
 def get_phantom_points(img_path:str) -> np.ndarray:
     """
