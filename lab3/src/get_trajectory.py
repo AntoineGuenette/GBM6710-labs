@@ -4,9 +4,62 @@ import cv2
 
 from lab3.src.phantom_params import *
 from lab3.src.point_selection import generate_grid_world, get_grid_points, get_ball_points, get_phantom_points
-from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points, project_points, plot_3D_results, plot_3D_results_cam_calib
+from lab3.src.reconstruction import (get_calib_mat, get_camera_center, triangulate_points, project_points,
+                                     plot_3D_results, plot_3D_results_cam_calib)
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
+
+def compute_safe_rotation(contact_point_world: np.ndarray, direction: np.ndarray) -> float:
+    """
+    Compute a safe base rotation angle (joint 1) by finding the intersection between a ray and the
+    XY axes.
+
+    The ray originates from the contact point and follows the opposite of the effector direction. 
+    The closest intersection with either the X or Y axis determines a safe quadrant-based rotation.
+
+    Parameters:
+        contact_point_world (np.ndarray): 3D coordinates of the contact point.
+        direction (np.ndarray): Unit direction vector of the end-effector.
+
+    Returns:
+        float: Safe rotation angle in degrees for joint 1.
+    """
+
+    p = contact_point_world.copy()
+    d = -direction.copy()
+
+    # Work in XY plane
+    p_xy = p[:2]
+    d_xy = d[:2]
+
+    eps = 1e-6
+    t_candidates = []
+
+    # Intersection with x = 0 (Y axis)
+    if abs(d_xy[0]) > eps:
+        t_x = -p_xy[0] / d_xy[0]
+        if t_x > 0:
+            y_at_tx = p_xy[1] + t_x * d_xy[1]
+            t_candidates.append((t_x, 'y', y_at_tx))
+
+    # Intersection with y = 0 (X axis)
+    if abs(d_xy[1]) > eps:
+        t_y = -p_xy[1] / d_xy[1]
+        if t_y > 0:
+            x_at_ty = p_xy[0] + t_y * d_xy[0]
+            t_candidates.append((t_y, 'x', x_at_ty))
+
+    # Select closest intersection
+    if len(t_candidates) == 0:
+        return 0  # fallback
+
+    t_min, axis, coord = min(t_candidates, key=lambda x: x[0])
+
+    if axis == 'x':  # crossed y = 0 → X axis
+        return 0 if coord >= 0 else 170
+    else:  # crossed x = 0 → Y axis
+        return 90 if coord >= 0 else -90
+
 
 def get_trajectory(
         xmax_ymax_grid_point_world:tuple,
@@ -113,46 +166,7 @@ def get_trajectory(
     effector_angles = euler_from_direction(direction)
 
     # Compute safe rotation angle for joint 1 using axis intersection (ray from contact point)
-    p = contact_point_world.copy()
-    d = -direction.copy()
-
-    # Work in XY plane
-    p_xy = p[:2]
-    d_xy = d[:2]
-
-    eps = 1e-6
-    t_candidates = []
-
-    # Intersection with x = 0 (Y axis)
-    if abs(d_xy[0]) > eps:
-        t_x = -p_xy[0] / d_xy[0]
-        if t_x > 0:
-            y_at_tx = p_xy[1] + t_x * d_xy[1]
-            t_candidates.append((t_x, 'y', y_at_tx))
-
-    # Intersection with y = 0 (X axis)
-    if abs(d_xy[1]) > eps:
-        t_y = -p_xy[1] / d_xy[1]
-        if t_y > 0:
-            x_at_ty = p_xy[0] + t_y * d_xy[0]
-            t_candidates.append((t_y, 'x', x_at_ty))
-
-    # Select closest intersection
-    if len(t_candidates) == 0:
-        safe_rot = 0  # fallback
-    else:
-        t_min, axis, coord = min(t_candidates, key=lambda x: x[0])
-
-        if axis == 'x':  # crossed y = 0 → X axis
-            if coord >= 0:
-                safe_rot = 0      # +X
-            else:
-                safe_rot = 170    # -X
-        else:  # axis == 'y', crossed x = 0 → Y axis
-            if coord >= 0:
-                safe_rot = 90     # +Y
-            else:
-                safe_rot = -90    # -Y
+    safe_rot = compute_safe_rotation(contact_point_world, direction)
 
     # Find the obstacle corners in each camera coordinates
     obs_world = np.array([
@@ -191,8 +205,8 @@ def get_trajectory(
     trg_cam2_int = trg_img_cam2.astype(np.int32).reshape((-1,1,2))
 
     # Draw colored polygons on grayscale background
-    cv2.fillPoly(img_cam1, [obs_cam1_int], (0, 0, 255))  # obstacle = red
-    cv2.fillPoly(img_cam1, [trg_cam1_int], (0, 255, 0))  # target = green
+    cv2.fillPoly(img_cam1, [obs_cam1_int], (0, 0, 255))
+    cv2.fillPoly(img_cam1, [trg_cam1_int], (0, 255, 0))
 
     cv2.fillPoly(img_cam2, [obs_cam2_int], (0, 0, 255))
     cv2.fillPoly(img_cam2, [trg_cam2_int], (0, 255, 0))
