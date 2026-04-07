@@ -16,9 +16,15 @@ obs_top_left_phantom = np.array([-44.19, -146.05, -377.81], dtype=float)
 obs_bottom_right_phantom = np.array([43.05, -134.31, -377.81], dtype=float)
 obs_bottom_left_phantom = np.array([-35.79, -134.31, -377.81], dtype=float)
 
+# Starting point (outside the phantom)
+starting_point_phantom = np.array([3.86, -132.47, -425.00], dtype=float)
+
+# Middle point (between target and obstacle)
+middle_point_phantom = np.array([3.86, -116.47, -365.78], dtype=float)
+
 # Target front corners
-trg_top_right_phantom = np.array([10.86, -108.00, -378.27], dtype=float)
-trg_top_left_phantom = np.array([-4.07, -108.00, -378.27], dtype=float)
+trg_top_right_phantom = np.array([10.86, -108.47, -378.27], dtype=float)
+trg_top_left_phantom = np.array([-4.07, -108.47, -378.27], dtype=float)
 trg_bottom_right_phantom = np.array([10.86, -96.26, -377.81], dtype=float)
 trg_bottom_left_phantom = np.array([-4.54, -96.26, -377.81], dtype=float)
 
@@ -28,9 +34,4 @@ contact_point_phantom = np.array([3.86, -108.47, -365.78], dtype=float)
 # Deflection point (maximum bending of target)
 deflection_point_phantom = np.array([3.86, -102.47, -365.78], dtype=float)
 
-# Middle point (between target and obstacle, inside the phantom)
-middle_point_phantom = np.array([3.86, -121.39, -365.78], dtype=float)
-
-# Starting point (between target and obstacle, outside the phantom)
-starting_point_phantom = np.array([3.86, -136.00, -425.00], dtype=float)
 
