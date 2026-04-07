@@ -3,22 +3,32 @@ import os
 import cv2
 
 from lab3.src.phantom_params import *
-from lab3.src.point_selection import get_grid_points, get_ball_points, get_phantom_points
+from lab3.src.point_selection import generate_grid_world, get_grid_points, get_ball_points, get_phantom_points
 from lab3.src.reconstruction import get_calib_mat, get_camera_center, triangulate_points, project_points, plot_3D_results, plot_3D_results_cam_calib
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
-def get_trajectory() -> str:
+def get_trajectory(
+        xmax_ymax_grid_point_world:tuple,
+        xmax_ymax_ball_point_world:list,
+        xmax_ymin_ball_point_world:list,
+        xmin_ymax_ball_point_world:list
+    ) -> str:
     """
-    Compute the trajectory of the system using stereo calibration, triangulation and registration
-    in order to estimate the position of the phantom and relevant points in world coordinates.
+    Compute a robotic trajectory using stereo vision, 3D reconstruction, and registration.
 
     Parameters:
-        None
+        xmax_ymax_grid_point_world (tuple): (x, y) coordinates of the top-right grid point in the
+            world frame.
+        xmax_ymax_ball_point_world (list): [x, y, z] coordinates of the top-right reference ball in
+            the world frame.
+        xmax_ymin_ball_point_world (list): [x, y, z] coordinates of the bottom-right reference ball
+            in the world frame.
+        xmin_ymax_ball_point_world (list): [x, y, z] coordinates of the top-left reference ball in
+            the world frame.
 
     Returns:
-        instructions (str): A string containing the instructions for the Meca500 robotic arm to
-        follow the computed trajectory.
+        str: A formatted string containing the sequence of instructions for the Meca500 robotic arm.
     """
 
     # Define paths
@@ -35,19 +45,11 @@ def get_trajectory() -> str:
     pts_grid_cam2 = get_grid_points(calib_img_cam2_path)
 
     # Define world points
-    pts_grid_world = np.array(
-        [ #  (x_max, y_max, 0.0)                                                                 (x_max, y_min, 0.0)
-            [[287.5, 287.5, 0.0], [287.5, 262.5, 0.0], [287.5, 237.5, 0.0], [287.5, 212.5, 0.0], [287.5, 187.5, 0.0]], 
-            [[262.5, 287.5, 0.0], [262.5, 262.5, 0.0], [262.5, 237.5, 0.0], [262.5, 212.5, 0.0], [262.5, 187.5, 0.0]],
-            [[237.5, 287.5, 0.0], [237.5, 262.5, 0.0], [237.5, 237.5, 0.0], [237.5, 212.5, 0.0], [237.5, 187.5, 0.0]],
-            [[212.5, 287.5, 0.0], [212.5, 262.5, 0.0], [212.5, 237.5, 0.0], [212.5, 212.5, 0.0], [212.5, 187.5, 0.0]],
-            [[187.5, 287.5, 0.0], [187.5, 262.5, 0.0], [187.5, 237.5, 0.0], [187.5, 212.5, 0.0], [187.5, 187.5, 0.0]],
-        ] #  (x_min, y_max, 0.0)                                                                 (x_min, y_min, 0.0)
-    )
+    pts_grid_world = generate_grid_world(xmax_ymax_grid_point_world[0], xmax_ymax_grid_point_world[1])
     pts_ball_world = np.array(
-        [[237.5, 237.5, 95.0], # (x_max, y_max, z)
-         [285.5, -62.5, 145.0], # (x_max, y_min, z)
-         [37.5, 287.5, 145.0]] # (x_min, y_max, z)
+        [xmax_ymax_ball_point_world,
+         xmax_ymin_ball_point_world,
+         xmin_ymax_ball_point_world]
     )
 
     # Compute calibration matrices
@@ -226,6 +228,11 @@ MoveJoints(0,0,0,0,0,0)
     return instructions
 
 if __name__ == "__main__":
-    instructions = get_trajectory()
+    instructions = get_trajectory(
+        xmax_ymax_grid_point_world=(262.5, 262.5),
+        xmax_ymax_ball_point_world=[287.5, 287.5, 95.0],
+        xmax_ymin_ball_point_world=[285.5, 37.5, 145.0],
+        xmin_ymax_ball_point_world=[37.5, 287.5, 145.0],
+    )
 
     print(f"\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n{instructions}")
