@@ -84,6 +84,9 @@ def get_trajectory(
         str: A formatted string containing the sequence of instructions for the Meca500 robotic arm.
     """
 
+    # Define constant
+    EFFECTOR_WIDTH = 5 #mm
+
     # Define paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
     lab3_dir = os.path.join(script_dir, '..')
@@ -142,6 +145,10 @@ def get_trajectory(
     R_reg = T_reg[0:3, 0:3]
     t_reg = T_reg[0:3, 3]
 
+    # Register box bottom interior corners to world coordinates
+    box_front_interior_right_world = R_reg @ box_front_interior_right_phantom + t_reg
+    box_front_interior_left_world = R_reg @ box_front_interior_left_phantom + t_reg
+
     # Register obstacle corners to world coordinates
     obs_top_right_world = R_reg @ obs_top_right_phantom + t_reg
     obs_top_left_world = R_reg @ obs_top_left_phantom + t_reg
@@ -154,11 +161,71 @@ def get_trajectory(
     trg_bottom_right_world = R_reg @ trg_bottom_right_phantom + t_reg
     trg_bottom_left_world = R_reg @ trg_bottom_left_phantom + t_reg
 
-    # Register trajectory points to world coordinates
+    # Register contact point to world coordinates
     contact_point_world = R_reg @ contact_point_phantom + t_reg
-    deflection_point_world = R_reg @ deflection_point_phantom + t_reg
-    middle_point_world = R_reg @ middle_point_phantom + t_reg
-    starting_point_world = R_reg @ starting_point_phantom + t_reg
+
+    # Compute trajectory points
+    deflection_point_world = contact_point_world - np.array([0.0, 0.0, 6.0])
+    middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.5 * EFFECTOR_WIDTH])
+
+    # Compute adaptive starting point based on accessible triangle
+    z_contact = contact_point_world[2]
+
+    left_proj = box_front_interior_left_world.copy()
+    right_proj = box_front_interior_right_world.copy()
+    left_proj[2] = z_contact
+    right_proj[2] = z_contact
+
+    # Shrink triangle by moving interior corners inward to clear the effector
+    inward_dir = box_front_interior_left_world - box_front_interior_right_world
+    inward_dir = inward_dir / np.linalg.norm(inward_dir)
+
+    # Move both corners inward
+    left_proj = left_proj - 1.5 * EFFECTOR_WIDTH * inward_dir
+    right_proj = right_proj + 1.5 * EFFECTOR_WIDTH * inward_dir
+
+    # Recompute directions with adjusted corners
+    dir_left = left_proj - contact_point_world
+    dir_right = right_proj - contact_point_world
+
+    def intersect_axis(p, d, axis='x'):
+        eps = 1e-6
+        if axis == 'x':
+            if abs(d[0]) < eps:
+                return None
+            t = -p[0] / d[0]
+        else:
+            if abs(d[1]) < eps:
+                return None
+            t = -p[1] / d[1]
+
+        if t <= 0:
+            return None
+
+        return p + t * d
+
+    candidates = []
+
+    for d in [dir_left, dir_right]:
+        p = contact_point_world
+
+        pt_x = intersect_axis(p, d, 'x')
+        pt_y = intersect_axis(p, d, 'y')
+
+        if pt_x is not None and pt_x[2] >= 0 and abs(pt_x[1]) <= 287.5:
+            candidates.append(pt_x)
+        if pt_y is not None and pt_y[2] >= 0 and abs(pt_x[0]) <= 287.5:
+            candidates.append(pt_y)
+
+    if len(candidates) > 0:
+        distances = [np.linalg.norm(c[:2]) for c in candidates]
+        starting_point_world = candidates[np.argmax(distances)]
+    else:
+        starting_point_world = contact_point_world.copy()
+
+    # Adjust Z height to match obstacle bottom average
+    z_obs = 0.5 * (obs_bottom_right_world[2] + obs_bottom_left_world[2])
+    starting_point_world[2] = z_obs
 
     # Compute effector direction
     direction = middle_point_world - starting_point_world

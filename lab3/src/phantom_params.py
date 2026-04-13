@@ -4,23 +4,21 @@ import matplotlib.pyplot as plt
 # All dimensions are in mm
 # The left and right sides are defined by looking at the open side of the phantom
 
-# Box top corners
+# Box top exterior corners
 box_back_right_phantom = np.array([64.98, -179.54, -292.13], dtype=float)
 box_back_left_phantom = np.array([-58.65, -179.54, -291.67], dtype=float)
 box_front_right_phantom = np.array([67.31, -179.54, -400.03], dtype=float)
 box_front_left_phantom = np.array([-59.12, -179.54, -399.11], dtype=float)
+
+# Box bottom front interior corners
+box_front_interior_right_phantom = np.array([49.18, -77.87, -400.03], dtype=float)
+box_front_interior_left_phantom = np.array([-42.85, -77.87, -399.11], dtype=float)
 
 # Obstacle front corners
 obs_top_right_phantom = np.array([50.98, -146.05, -377.81], dtype=float)
 obs_top_left_phantom = np.array([-44.19, -146.05, -377.81], dtype=float)
 obs_bottom_right_phantom = np.array([43.05, -134.31, -377.81], dtype=float)
 obs_bottom_left_phantom = np.array([-35.79, -134.31, -377.81], dtype=float)
-
-# Starting point (outside the phantom)
-starting_point_phantom = np.array([3.86, -132.47, -425.00], dtype=float)
-
-# Middle point (between target and obstacle)
-middle_point_phantom = np.array([3.86, -116.47, -365.78], dtype=float)
 
 # Target front corners
 trg_top_right_phantom = np.array([10.86, -108.47, -378.27], dtype=float)
@@ -30,8 +28,3 @@ trg_bottom_left_phantom = np.array([-4.54, -96.26, -377.81], dtype=float)
 
 # Contact point
 contact_point_phantom = np.array([3.86, -108.47, -365.78], dtype=float)
-
-# Deflection point (maximum bending of target)
-deflection_point_phantom = np.array([3.86, -102.47, -365.78], dtype=float)
-
-
