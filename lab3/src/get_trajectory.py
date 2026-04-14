@@ -65,7 +65,8 @@ def get_trajectory(
         xmax_ymax_grid_point_world:tuple,
         xmax_ymax_ball_point_world:list,
         xmax_ymin_ball_point_world:list,
-        xmin_ymax_ball_point_world:list
+        xmin_ymax_ball_point_world:list,
+        side:str
     ) -> str:
     """
     Compute a robotic trajectory using stereo vision, 3D reconstruction, and registration.
@@ -79,13 +80,14 @@ def get_trajectory(
             in the world frame.
         xmin_ymax_ball_point_world (list): [x, y, z] coordinates of the top-left reference ball in
             the world frame.
+        side (str): side to approach the phantom (left, right or center)
 
     Returns:
         str: A formatted string containing the sequence of instructions for the Meca500 robotic arm.
     """
 
-    # Define constant
-    EFFECTOR_WIDTH = 5 #mm
+    # Define constants
+    EFFECTOR_WIDTH = 9 # mm
 
     # Define paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -188,40 +190,22 @@ def get_trajectory(
     dir_left = left_proj - contact_point_world
     dir_right = right_proj - contact_point_world
 
-    def intersect_axis(p, d, axis='x'):
-        eps = 1e-6
-        if axis == 'x':
-            if abs(d[0]) < eps:
-                return None
-            t = -p[0] / d[0]
-        else:
-            if abs(d[1]) < eps:
-                return None
-            t = -p[1] / d[1]
+    # Normalize directions
+    dir_left = dir_left / np.linalg.norm(dir_left)
+    dir_right = dir_right / np.linalg.norm(dir_right)
 
-        if t <= 0:
-            return None
-
-        return p + t * d
-
-    candidates = []
-
-    for d in [dir_left, dir_right]:
-        p = contact_point_world
-
-        pt_x = intersect_axis(p, d, 'x')
-        pt_y = intersect_axis(p, d, 'y')
-
-        if pt_x is not None and pt_x[2] >= 0 and abs(pt_x[1]) <= 287.5:
-            candidates.append(pt_x)
-        if pt_y is not None and pt_y[2] >= 0 and abs(pt_x[0]) <= 287.5:
-            candidates.append(pt_y)
-
-    if len(candidates) > 0:
-        distances = [np.linalg.norm(c[:2]) for c in candidates]
-        starting_point_world = candidates[np.argmax(distances)]
+    # Choose direction (left, right, or center)
+    if side == 'l':
+        direction_choice = dir_left
+    elif side == 'r':
+        direction_choice = dir_right
+    elif side == 'c':
+        direction_choice = (dir_left + dir_right) / np.linalg.norm(dir_left + dir_right)
     else:
-        starting_point_world = contact_point_world.copy()
+        raise ValueError("side must be 'l', 'r', or 'c'")
+
+    # Starting point = 100 mm away from contact point along chosen direction
+    starting_point_world = contact_point_world + 100.0 * direction_choice
 
     # Adjust Z height to match obstacle bottom average
     z_obs = 0.5 * (obs_bottom_right_world[2] + obs_bottom_left_world[2])
@@ -309,11 +293,21 @@ MoveJoints(0,0,0,0,0,0)
     return instructions
 
 if __name__ == "__main__":
+
+    print("\n --- Meca500 Trajectory Computing --- \n")
+
+    # Select side
+    side = input("Please entre the side of the approach (l, r or c): ")
+    while side not in ['l', 'r', 'c']:
+        side = input("Please entre the side of the approach (l, r or c): ")
+
+    # Compute trajectory
     instructions = get_trajectory(
         xmax_ymax_grid_point_world=(262.5, 262.5),
         xmax_ymax_ball_point_world=[287.5, 287.5, 95.0],
         xmax_ymin_ball_point_world=[285.5, 37.5, 145.0],
         xmin_ymax_ball_point_world=[37.5, 287.5, 145.0],
+        side='c'
     )
 
     print(f"\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n{instructions}")
