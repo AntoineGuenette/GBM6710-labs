@@ -9,57 +9,6 @@ from lab3.src.reconstruction import (get_calib_mat, get_camera_center, triangula
 from lab2.src.registration import compute_registration_transform
 from lab2.src.utils import euler_from_direction
 
-def compute_safe_rotation(contact_point_world: np.ndarray, direction: np.ndarray) -> float:
-    """
-    Compute a safe base rotation angle (joint 1) by finding the intersection between a ray and the
-    XY axes.
-
-    The ray originates from the contact point and follows the opposite of the effector direction. 
-    The closest intersection with either the X or Y axis determines a safe quadrant-based rotation.
-
-    Parameters:
-        contact_point_world (np.ndarray): 3D coordinates of the contact point.
-        direction (np.ndarray): Unit direction vector of the end-effector.
-
-    Returns:
-        float: Safe rotation angle in degrees for joint 1.
-    """
-
-    p = contact_point_world.copy()
-    d = -direction.copy()
-
-    # Work in XY plane
-    p_xy = p[:2]
-    d_xy = d[:2]
-
-    eps = 1e-6
-    t_candidates = []
-
-    # Intersection with x = 0 (Y axis)
-    if abs(d_xy[0]) > eps:
-        t_x = -p_xy[0] / d_xy[0]
-        if t_x > 0:
-            y_at_tx = p_xy[1] + t_x * d_xy[1]
-            t_candidates.append((t_x, 'y', y_at_tx))
-
-    # Intersection with y = 0 (X axis)
-    if abs(d_xy[1]) > eps:
-        t_y = -p_xy[1] / d_xy[1]
-        if t_y > 0:
-            x_at_ty = p_xy[0] + t_y * d_xy[0]
-            t_candidates.append((t_y, 'x', x_at_ty))
-
-    # Select closest intersection
-    if len(t_candidates) == 0:
-        return 0  # fallback
-
-    t_min, axis, coord = min(t_candidates, key=lambda x: x[0])
-
-    if axis == 'x':  # crossed y = 0 → X axis
-        return 0 if coord >= 0 else 170
-    else:  # crossed x = 0 → Y axis
-        return 90 if coord >= 0 else -90
-
 
 def get_trajectory(
         xmax_ymax_grid_point_world:tuple,
@@ -169,7 +118,7 @@ def get_trajectory(
 
     # Compute trajectory points
     deflection_point_world = contact_point_world - np.array([0.0, 0.0, DEFLECTION_HEIGHT])
-    middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.25 * EFFECTOR_WIDTH])
+    middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.5 * EFFECTOR_WIDTH])
 
     # Compute adaptive starting point based on accessible triangle
     z_contact = contact_point_world[2]
@@ -220,8 +169,17 @@ def get_trajectory(
     direction = direction / np.linalg.norm(direction)
     effector_angles = euler_from_direction(direction)
 
-    # Compute safe rotation angle for joint 1 using axis intersection (ray from contact point)
-    safe_rot = compute_safe_rotation(contact_point_world, direction)
+    # Compute safe rotation angle for joint 1
+    # Compute angles in XY plane
+    start_angle = np.degrees(np.arctan2(starting_point_world[1], starting_point_world[0]))
+    contact_angle = np.degrees(np.arctan2(contact_point_world[1], contact_point_world[0]))
+
+    # Determine direction to move away from phantom
+    angle_diff = start_angle - contact_angle
+    if angle_diff >= 0:
+        safe_rot = start_angle + 45
+    else:
+        safe_rot = start_angle - 45
 
     # Find the obstacle corners in each camera coordinates
     obs_world = np.array([
@@ -278,7 +236,7 @@ SetTRF(0,0,71.3,0,0,0)
 SetJointVel(10)
 SetCartLinVel(10)
 SetCartAngVel(15)
-MoveJoints({safe_rot},0,0,0,0,0)
+MoveJoints({safe_rot:.2f},0,0,0,0,0)
 MovePose({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
 Delay(1)
 MoveLin({middle_point_world[0]:.2f},{middle_point_world[1]:.2f},{middle_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
@@ -290,7 +248,7 @@ MoveLin({contact_point_world[0]:.2f},{contact_point_world[1]:.2f},{contact_point
 MoveLin({middle_point_world[0]:.2f},{middle_point_world[1]:.2f},{middle_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
 SetCartLinVel(10)
 MoveLin({starting_point_world[0]:.2f},{starting_point_world[1]:.2f},{starting_point_world[2]:.2f},{effector_angles[0]:.2f},{effector_angles[1]:.2f},{effector_angles[2]:.2f})
-MoveJoints({safe_rot},0,0,0,0,0)
+MoveJoints({safe_rot:.2f},0,0,0,0,0)
 MoveJoints(0,0,0,0,0,0)
         """
 
