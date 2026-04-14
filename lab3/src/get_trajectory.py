@@ -88,6 +88,7 @@ def get_trajectory(
 
     # Define constants
     EFFECTOR_WIDTH = 9 # mm
+    DEFLECTION_HEIGHT = 6 # mm
 
     # Define paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -167,8 +168,8 @@ def get_trajectory(
     contact_point_world = R_reg @ contact_point_phantom + t_reg
 
     # Compute trajectory points
-    deflection_point_world = contact_point_world - np.array([0.0, 0.0, 6.0])
-    middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.5 * EFFECTOR_WIDTH])
+    deflection_point_world = contact_point_world - np.array([0.0, 0.0, DEFLECTION_HEIGHT])
+    middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.25 * EFFECTOR_WIDTH])
 
     # Compute adaptive starting point based on accessible triangle
     z_contact = contact_point_world[2]
@@ -197,15 +198,18 @@ def get_trajectory(
     # Choose direction (left, right, or center)
     if side == 'l':
         direction_choice = dir_left
+        STARTING_DISTANCE = 75 # mm
     elif side == 'r':
         direction_choice = dir_right
+        STARTING_DISTANCE = 75 # mm
     elif side == 'c':
         direction_choice = (dir_left + dir_right) / np.linalg.norm(dir_left + dir_right)
+        STARTING_DISTANCE = 50 # mm
     else:
         raise ValueError("side must be 'l', 'r', or 'c'")
 
-    # Starting point = 100 mm away from contact point along chosen direction
-    starting_point_world = contact_point_world + 100.0 * direction_choice
+    # Compute starting point
+    starting_point_world = contact_point_world + STARTING_DISTANCE * direction_choice
 
     # Adjust Z height to match obstacle bottom average
     z_obs = 0.5 * (obs_bottom_right_world[2] + obs_bottom_left_world[2])
@@ -307,7 +311,7 @@ if __name__ == "__main__":
         xmax_ymax_ball_point_world=[287.5, 287.5, 95.0],
         xmax_ymin_ball_point_world=[285.5, 37.5, 145.0],
         xmin_ymax_ball_point_world=[37.5, 287.5, 145.0],
-        side='c'
+        side=side
     )
 
     print(f"\nTRAJECTORY INSTRUCTIONS FOR MECA500 ROBOTIC ARM:\n{instructions}")
