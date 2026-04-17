@@ -25,10 +25,10 @@ def get_trajectory(
             world frame.
         xmax_ymax_ball_point_world (list): [x, y, z] coordinates of the top-right reference ball in
             the world frame.
-        xmax_ymin_ball_point_world (list): [x, y, z] coordinates of the bottom-right reference ball
+        xmax_ymin_ball_point_world (list): [x, y, z] coordinates of the top-right reference ball
             in the world frame.
-        xmin_ymax_ball_point_world (list): [x, y, z] coordinates of the top-left reference ball in
-            the world frame.
+        xmin_ymax_ball_point_world (list): [x, y, z] coordinates of the bottom-left reference ball
+            in the world frame.
         side (str): side to approach the phantom (left, right or center)
 
     Returns:
@@ -48,10 +48,6 @@ def get_trajectory(
     img_cam1_path = os.path.join(img_dir, 'imgs', 'cam1.jpg')
     img_cam2_path = os.path.join(img_dir, 'imgs', 'cam2.jpg')
 
-    # Get grid points in camera coordinates
-    pts_grid_cam1 = get_grid_points(calib_img_cam1_path)
-    pts_grid_cam2 = get_grid_points(calib_img_cam2_path)
-
     # Define world points
     pts_grid_world = generate_grid_world(xmax_ymax_grid_point_world[0], xmax_ymax_grid_point_world[1])
     pts_ball_world = np.array(
@@ -59,6 +55,10 @@ def get_trajectory(
          xmax_ymin_ball_point_world,
          xmin_ymax_ball_point_world]
     )
+
+    # Get grid points in camera coordinates
+    pts_grid_cam1 = get_grid_points(calib_img_cam1_path)
+    pts_grid_cam2 = get_grid_points(calib_img_cam2_path)
 
     # Compute calibration matrices
     calib_mat_cam1 = get_calib_mat(pts_grid_cam1, pts_grid_world)
@@ -72,6 +72,7 @@ def get_trajectory(
     C_cam1 = get_camera_center(calib_mat_cam1, pts_ball_cam1, pts_ball_world)
     C_cam2 = get_camera_center(calib_mat_cam2, pts_ball_cam2, pts_ball_world)
 
+    # Show camera centers in a 3D plot
     plot_3D_results_cam_calib(C_cam1, C_cam2)
 
     # Get phantom points in camera coordinates
@@ -97,52 +98,48 @@ def get_trajectory(
     R_reg = T_reg[0:3, 0:3]
     t_reg = T_reg[0:3, 3]
 
-    # Register box bottom interior corners to world coordinates
+    # Show phantom corners relative to the balls in a 3D plot
+    plot_3D_results(C_cam1, C_cam2, box_corners_world, pts_ball_world)
+
+    # Register phantom points to world coordinates
     box_front_interior_right_world = R_reg @ box_front_interior_right_phantom + t_reg
     box_front_interior_left_world = R_reg @ box_front_interior_left_phantom + t_reg
 
-    # Register obstacle corners to world coordinates
     obs_top_right_world = R_reg @ obs_top_right_phantom + t_reg
     obs_top_left_world = R_reg @ obs_top_left_phantom + t_reg
     obs_bottom_right_world = R_reg @ obs_bottom_right_phantom + t_reg
     obs_bottom_left_world = R_reg @ obs_bottom_left_phantom + t_reg
 
-    # Register target corners to world coordinates
     trg_top_right_world = R_reg @ trg_top_right_phantom + t_reg
     trg_top_left_world = R_reg @ trg_top_left_phantom + t_reg
     trg_bottom_right_world = R_reg @ trg_bottom_right_phantom + t_reg
     trg_bottom_left_world = R_reg @ trg_bottom_left_phantom + t_reg
 
-    # Register contact point to world coordinates
     contact_point_world = R_reg @ contact_point_phantom + t_reg
 
     # Compute trajectory points
     deflection_point_world = contact_point_world - np.array([0.0, 0.0, DEFLECTION_HEIGHT])
     middle_point_world = contact_point_world + np.array([0.0, 0.0, 1.5 * EFFECTOR_WIDTH])
 
-    # Compute adaptive starting point based on accessible triangle
-    z_contact = contact_point_world[2]
-
+    # Define front interior corners on the contact plane
     left_proj = box_front_interior_left_world.copy()
     right_proj = box_front_interior_right_world.copy()
-    left_proj[2] = z_contact
-    right_proj[2] = z_contact
+    left_proj[2] = contact_point_world[2]
+    right_proj[2] = contact_point_world[2]
 
-    # Shrink triangle by moving interior corners inward to clear the effector
+    # Define the inward direction
     inward_dir = box_front_interior_left_world - box_front_interior_right_world
-    inward_dir = inward_dir / np.linalg.norm(inward_dir)
+    inward_dir /= np.linalg.norm(inward_dir)
 
-    # Move both corners inward
+    # Move interior corners inward to clear the effector
     left_proj = left_proj - 1.5 * EFFECTOR_WIDTH * inward_dir
     right_proj = right_proj + 1.5 * EFFECTOR_WIDTH * inward_dir
 
-    # Recompute directions with adjusted corners
+    # Define directions for left and right approaches
     dir_left = left_proj - contact_point_world
     dir_right = right_proj - contact_point_world
-
-    # Normalize directions
-    dir_left = dir_left / np.linalg.norm(dir_left)
-    dir_right = dir_right / np.linalg.norm(dir_right)
+    dir_left /= np.linalg.norm(dir_left)
+    dir_right /= np.linalg.norm(dir_right)
 
     # Choose direction (left, right, or center)
     if side == 'l':
@@ -157,7 +154,7 @@ def get_trajectory(
     else:
         raise ValueError("side must be 'l', 'r', or 'c'")
 
-    # Compute starting point
+    # Compute starting point on the contact plane
     starting_point_world = contact_point_world + STARTING_DISTANCE * direction_choice
 
     # Adjust Z height to match obstacle bottom average
@@ -166,16 +163,17 @@ def get_trajectory(
 
     # Compute effector direction
     direction = middle_point_world - starting_point_world
-    direction = direction / np.linalg.norm(direction)
+    direction /= np.linalg.norm(direction)
     effector_angles = euler_from_direction(direction)
 
-    # Compute safe rotation angle for joint 1
-    # Compute angles in XY plane
+    # Compute joint 1 angle for the starting point and contact point
     start_angle = np.degrees(np.arctan2(starting_point_world[1], starting_point_world[0]))
     contact_angle = np.degrees(np.arctan2(contact_point_world[1], contact_point_world[0]))
 
     # Determine direction to move away from phantom
     angle_diff = start_angle - contact_angle
+
+    # Define safe rotation angle for the joint 1 to move away from phantom
     if angle_diff >= 0:
         safe_rot = start_angle + 45
     else:
@@ -201,13 +199,11 @@ def get_trajectory(
     trg_img_cam1 = project_points(trg_world, C_cam1, calib_mat_cam1)
     trg_img_cam2 = project_points(trg_world, C_cam2, calib_mat_cam2)
 
-    plot_3D_results(C_cam1, C_cam2, box_corners_world, pts_ball_world)
-
-    # Show augmented images (highlight obstacle and target with filled polygons)
+    # Open phantom images from each camera
     img_cam1 = cv2.imread(img_cam1_path, cv2.IMREAD_GRAYSCALE)
     img_cam2 = cv2.imread(img_cam2_path, cv2.IMREAD_GRAYSCALE)
 
-    # Convert grayscale to BGR so we can overlay colors
+    # Convert grayscale to BGR to overlay colors
     img_cam1 = cv2.cvtColor(img_cam1, cv2.COLOR_GRAY2BGR)
     img_cam2 = cv2.cvtColor(img_cam2, cv2.COLOR_GRAY2BGR)
 
@@ -220,17 +216,17 @@ def get_trajectory(
     # Draw colored polygons on grayscale background
     cv2.fillPoly(img_cam1, [obs_cam1_int], (0, 0, 255))
     cv2.fillPoly(img_cam1, [trg_cam1_int], (0, 255, 0))
-
     cv2.fillPoly(img_cam2, [obs_cam2_int], (0, 0, 255))
     cv2.fillPoly(img_cam2, [trg_cam2_int], (0, 255, 0))
 
+    # Show images
     cv2.imshow("Camera 1", img_cam1)
     cv2.waitKey(50)
     cv2.imshow("Camera 2", img_cam2)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    # Print directions
+    # Print trajectory instructions for the Meca500
     instructions = f"""
 SetTRF(0,0,71.3,0,0,0)
 SetJointVel(10)
